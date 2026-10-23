@@ -7,10 +7,18 @@ if (!defined('ABSPATH')) {
 
 final class Woact_Core
 {
-    private const OPTION = 'woact_stage1_settings';
     private const META_RENDER_MODE = '_woact_render_mode';
     private static ?self $instance = null;
     private bool $booted = false;
+    private Woact_Settings $settings;
+    private Woact_Settings_REST_Controller $settings_controller;
+
+    private function __construct()
+    {
+        $schema = require WOACT_CORE_DIR . 'includes/settings-schema.php';
+        $this->settings = new Woact_Settings(is_array($schema) ? $schema : []);
+        $this->settings_controller = new Woact_Settings_REST_Controller($this->settings);
+    }
 
     public static function instance(): self
     {
@@ -22,18 +30,7 @@ final class Woact_Core
 
     public static function activate(): void
     {
-        if (get_option(self::OPTION, null) === null) {
-            add_option(self::OPTION, self::defaults());
-        }
-    }
-
-    public static function defaults(): array
-    {
-        return [
-            'render_mode' => 'hybrid',
-            'preserve_builders' => 1,
-            'react_post_types' => ['page', 'post'],
-        ];
+        self::instance()->settings->install_or_upgrade();
     }
 
     public function boot(): void
@@ -43,26 +40,39 @@ final class Woact_Core
         }
         $this->booted = true;
 
+        if ((int) get_option(Woact_Settings::DB_VERSION_OPTION, 0) < Woact_Settings::SCHEMA_VERSION) {
+            $this->settings->install_or_upgrade();
+        }
+
         load_plugin_textdomain('woact-core', false, dirname(plugin_basename(WOACT_CORE_FILE)) . '/languages');
         add_action('admin_menu', [$this, 'register_admin_page']);
-        add_action('admin_init', [$this, 'register_settings']);
+        add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_assets']);
         add_action('add_meta_boxes', [$this, 'register_render_meta_box']);
         add_action('save_post', [$this, 'save_render_meta_box']);
         add_action('rest_api_init', [$this, 'register_rest_routes']);
+        add_action('wp_enqueue_scripts', [$this, 'apply_frontend_settings'], 20);
+        add_action('wp_body_open', [$this, 'render_classic_banner'], 5);
+        add_action('wp_head', [$this, 'print_custom_head_script'], 99);
+        add_action('wp_footer', [$this, 'print_custom_footer_script'], 99);
+        add_action('template_redirect', [$this, 'maybe_render_maintenance'], 0);
         add_filter('plugin_action_links_' . plugin_basename(WOACT_CORE_FILE), [$this, 'add_settings_link']);
+        $this->apply_performance_settings();
     }
 
     public function get_settings(): array
     {
-        $saved = get_option(self::OPTION, []);
-        return array_merge(self::defaults(), is_array($saved) ? $saved : []);
+        return $this->settings->get_values();
     }
 
     public function register_admin_page(): void
     {
+        $settings = $this->get_settings();
+        $menu_name = !empty($settings['white_label.enabled']) && !empty($settings['white_label.name'])
+            ? (string) $settings['white_label.name']
+            : __('Woact', 'woact-core');
         add_menu_page(
-            __('Woact', 'woact-core'),
-            __('Woact', 'woact-core'),
+            $menu_name,
+            $menu_name,
             'manage_options',
             'woact',
             [$this, 'render_settings_page'],
@@ -71,34 +81,33 @@ final class Woact_Core
         );
     }
 
-    public function register_settings(): void
+    public function enqueue_admin_assets(string $hook): void
     {
-        register_setting('woact_stage1', self::OPTION, [
-            'type' => 'object',
-            'sanitize_callback' => [$this, 'sanitize_settings'],
-            'default' => self::defaults(),
-        ]);
-    }
-
-    public function sanitize_settings($input): array
-    {
-        $input = is_array($input) ? $input : [];
-        $allowed_modes = ['classic', 'hybrid', 'react'];
-        $mode = sanitize_key((string) ($input['render_mode'] ?? 'hybrid'));
-        if (!in_array($mode, $allowed_modes, true)) {
-            $mode = 'hybrid';
+        if ($hook !== 'toplevel_page_woact') {
+            return;
         }
-
-        $public_types = get_post_types(['public' => true], 'names');
-        unset($public_types['attachment']);
-        $selected = array_map('sanitize_key', (array) ($input['react_post_types'] ?? []));
-        $selected = array_values(array_intersect($selected, array_values($public_types)));
-
-        return [
-            'render_mode' => $mode,
-            'preserve_builders' => empty($input['preserve_builders']) ? 0 : 1,
-            'react_post_types' => $selected,
-        ];
+        wp_enqueue_media();
+        $css_file = WOACT_CORE_DIR . 'assets/admin-settings.css';
+        $js_file = WOACT_CORE_DIR . 'assets/admin-settings.js';
+        wp_enqueue_style(
+            'woact-admin-settings',
+            plugins_url('assets/admin-settings.css', WOACT_CORE_FILE),
+            [],
+            is_file($css_file) ? (string) filemtime($css_file) : WOACT_CORE_VERSION
+        );
+        wp_enqueue_script(
+            'woact-admin-settings',
+            plugins_url('assets/admin-settings.js', WOACT_CORE_FILE),
+            ['wp-element', 'wp-api-fetch', 'wp-i18n'],
+            is_file($js_file) ? (string) filemtime($js_file) : WOACT_CORE_VERSION,
+            true
+        );
+        wp_add_inline_script('woact-admin-settings', 'window.WoactAdminConfig=' . wp_json_encode([
+            'apiRoot' => esc_url_raw(rest_url('woact/v1')),
+            'nonce' => wp_create_nonce('wp_rest'),
+            'version' => WOACT_CORE_VERSION,
+            'locale' => get_locale(),
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ';', 'before');
     }
 
     public function render_settings_page(): void
@@ -106,59 +115,15 @@ final class Woact_Core
         if (!current_user_can('manage_options')) {
             return;
         }
-        $settings = $this->get_settings();
-        $post_types = get_post_types(['public' => true], 'objects');
-        unset($post_types['attachment']);
         ?>
-        <div class="wrap woact-settings" dir="rtl">
-            <h1><?php esc_html_e('تنظیمات پایه Woact', 'woact-core'); ?></h1>
-            <p><?php esc_html_e('در استیج اول فقط نحوهٔ رندر سایت را کنترل می‌کنیم تا انتقال به React تدریجی و امن باشد.', 'woact-core'); ?></p>
-            <form method="post" action="options.php">
-                <?php settings_fields('woact_stage1'); ?>
-                <table class="form-table" role="presentation">
-                    <tr>
-                        <th scope="row"><?php esc_html_e('حالت رندر سایت', 'woact-core'); ?></th>
-                        <td>
-                            <?php
-                            $modes = [
-                                'classic' => ['وردپرس و صفحه‌سازها', 'همهٔ صفحات با رندر معمول وردپرس نمایش داده می‌شوند.'],
-                                'hybrid' => ['ترکیبی — پیشنهاد فعلی', 'صفحات فعلی دست‌نخورده می‌مانند و React را برای هر صفحه جداگانه فعال می‌کنید.'],
-                                'react' => ['React سراسری', 'انواع محتوای انتخاب‌شده با React نمایش داده می‌شوند؛ صفحات صفحه‌ساز همچنان محافظت می‌شوند.'],
-                            ];
-                            foreach ($modes as $value => [$label, $description]) :
-                                ?>
-                                <label style="display:block;margin:0 0 14px">
-                                    <input type="radio" name="<?php echo esc_attr(self::OPTION); ?>[render_mode]" value="<?php echo esc_attr($value); ?>" <?php checked($settings['render_mode'], $value); ?>>
-                                    <strong><?php echo esc_html($label); ?></strong><br>
-                                    <span class="description"><?php echo esc_html($description); ?></span>
-                                </label>
-                            <?php endforeach; ?>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row"><?php esc_html_e('سازگاری با صفحه‌سازها', 'woact-core'); ?></th>
-                        <td>
-                            <label>
-                                <input type="checkbox" name="<?php echo esc_attr(self::OPTION); ?>[preserve_builders]" value="1" <?php checked((int) $settings['preserve_builders'], 1); ?>>
-                                <?php esc_html_e('صفحات ساخته‌شده با Elementor و صفحه‌سازهای شناخته‌شده با خروجی اصلی خودشان باز شوند', 'woact-core'); ?>
-                            </label>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row"><?php esc_html_e('انواع محتوای React', 'woact-core'); ?></th>
-                        <td>
-                            <?php foreach ($post_types as $post_type) : ?>
-                                <label style="display:inline-block;margin:0 0 10px 18px">
-                                    <input type="checkbox" name="<?php echo esc_attr(self::OPTION); ?>[react_post_types][]" value="<?php echo esc_attr($post_type->name); ?>" <?php checked(in_array($post_type->name, $settings['react_post_types'], true)); ?>>
-                                    <?php echo esc_html($post_type->labels->name); ?>
-                                </label>
-                            <?php endforeach; ?>
-                            <p class="description"><?php esc_html_e('این انتخاب فقط در حالت React سراسری اعمال می‌شود.', 'woact-core'); ?></p>
-                        </td>
-                    </tr>
-                </table>
-                <?php submit_button(__('ذخیره تنظیمات', 'woact-core')); ?>
-            </form>
+        <div class="wrap woact-admin-wrap" dir="rtl">
+            <div id="woact-settings-root">
+                <div class="woact-admin-loading">
+                    <span class="spinner is-active"></span>
+                    <p><?php esc_html_e('در حال بارگذاری تنظیمات Woact…', 'woact-core'); ?></p>
+                </div>
+            </div>
+            <noscript><?php esc_html_e('برای استفاده از پنل تنظیمات، JavaScript مرورگر را فعال کنید.', 'woact-core'); ?></noscript>
         </div>
         <?php
     }
@@ -229,12 +194,12 @@ final class Woact_Core
         $settings = $this->get_settings();
 
         return Woact_Render_Policy::decide([
-            'global_mode' => $settings['render_mode'],
+            'global_mode' => $settings['render.mode'],
             'override' => $override ?: 'inherit',
             'is_builder_document' => $post_id > 0 && $this->is_builder_document($post_id),
-            'preserve_builders' => (bool) $settings['preserve_builders'],
+            'preserve_builders' => (bool) $settings['render.preserve_builders'],
             'post_type' => $post_type,
-            'enabled_post_types' => $settings['react_post_types'],
+            'enabled_post_types' => $settings['render.post_types'],
         ]);
     }
 
@@ -304,6 +269,7 @@ final class Woact_Core
             ],
             'navigation' => $this->get_navigation(),
             'content' => $this->get_route_content(),
+            'settings' => $this->get_public_settings(),
         ];
 
         if (is_user_logged_in()) {
@@ -413,6 +379,7 @@ final class Woact_Core
 
     public function register_rest_routes(): void
     {
+        $this->settings_controller->register_routes();
         register_rest_route('woact/v1', '/status', [
             'methods' => WP_REST_Server::READABLE,
             'permission_callback' => '__return_true',
@@ -420,11 +387,194 @@ final class Woact_Core
                 $settings = $this->get_settings();
                 return new WP_REST_Response([
                     'version' => WOACT_CORE_VERSION,
-                    'mode' => $settings['render_mode'],
-                    'builderCompatibility' => (bool) $settings['preserve_builders'],
+                    'schemaVersion' => Woact_Settings::SCHEMA_VERSION,
+                    'mode' => $settings['render.mode'],
+                    'builderCompatibility' => (bool) $settings['render.preserve_builders'],
                 ]);
             },
         ]);
+    }
+
+    private function get_public_settings(): array
+    {
+        $settings = $this->get_settings();
+        $allowed = [
+            'layout.container_width',
+            'layout.content_width',
+            'layout.card_radius',
+            'layout.direction',
+            'style.primary',
+            'style.accent',
+            'style.text',
+            'style.muted',
+            'style.border',
+            'style.link',
+            'style.gradient',
+            'style.button_radius',
+            'style.input_radius',
+            'banner.enabled',
+            'banner.text',
+            'banner.link',
+            'banner.background',
+            'banner.text_color',
+            'banner.closable',
+            'footer.enabled',
+            'footer.copyright',
+            'footer.background',
+            'footer.text_color',
+        ];
+        return array_intersect_key($settings, array_flip($allowed));
+    }
+
+    public function apply_frontend_settings(): void
+    {
+        $settings = $this->get_settings();
+        $body = is_array($settings['typography.body'] ?? null) ? $settings['typography.body'] : [];
+        $heading = is_array($settings['typography.headings'] ?? null) ? $settings['typography.headings'] : [];
+        $custom_font_url = (string) ($settings['typography.custom_font_url'] ?? '');
+        $custom_font_name = (string) ($settings['typography.custom_font_name'] ?? '');
+        $font_face = '';
+        if ($custom_font_url !== '' && $custom_font_name !== '') {
+            $font_face = sprintf(
+                '@font-face{font-family:"%s";src:url("%s");font-display:%s;}',
+                esc_attr($custom_font_name),
+                esc_url_raw($custom_font_url),
+                esc_attr((string) ($settings['typography.font_display'] ?? 'swap'))
+            );
+        }
+        $css = $font_face . sprintf(
+            ':root{--woact-primary:%1$s;--woact-accent:%2$s;--woact-text:%3$s;--woact-muted:%4$s;--woact-border:%5$s;--woact-background:%6$s;--woact-link:%7$s;--woact-radius:%8$dpx;--woact-container:%9$dpx;--woact-content-width:%10$dpx;--woact-button-radius:%11$dpx;--woact-input-radius:%12$dpx;}body{font-family:"%13$s",Tahoma,Arial,sans-serif;font-size:%14$dpx;line-height:%15$s;}h1,h2,h3,h4,h5,h6{font-family:"%16$s",Tahoma,Arial,sans-serif;font-weight:%17$s;line-height:%18$s;}a{color:var(--woact-link);}',
+            (string) $settings['style.primary'],
+            (string) $settings['style.accent'],
+            (string) $settings['style.text'],
+            (string) $settings['style.muted'],
+            (string) $settings['style.border'],
+            (string) $settings['layout.site_background'],
+            (string) $settings['style.link'],
+            (int) $settings['layout.card_radius'],
+            (int) $settings['layout.container_width'],
+            (int) $settings['layout.content_width'],
+            (int) $settings['style.button_radius'],
+            (int) $settings['style.input_radius'],
+            esc_attr((string) ($body['family'] ?? 'Tahoma')),
+            (int) ($body['size'] ?? 16),
+            esc_attr((string) ($body['lineHeight'] ?? '1.8')),
+            esc_attr((string) ($heading['family'] ?? 'Tahoma')),
+            esc_attr((string) ($heading['weight'] ?? '700')),
+            esc_attr((string) ($heading['lineHeight'] ?? '1.4'))
+        );
+        if (in_array($settings['layout.direction'], ['rtl', 'ltr'], true)) {
+            $css .= 'body{direction:' . $settings['layout.direction'] . ';}';
+        }
+        if (!empty($settings['style.button_uppercase'])) {
+            $css .= '.button,button,.wp-element-button{text-transform:uppercase;}';
+        }
+        if (!empty($settings['style.focus_ring'])) {
+            $css .= ':focus-visible{outline:3px solid color-mix(in srgb,var(--woact-primary),transparent 35%);outline-offset:3px;}';
+        }
+        $css .= sprintf(
+            '.woact-site-footer,.woact-react-footer{background:%1$s;color:%2$s}.woact-site-footer a,.woact-react-footer a{color:inherit}.woact-entry,.woact-card,.woact-empty{border-radius:%3$dpx}.woact-field input,.woact-field select,.woact-field textarea,input:not([type="checkbox"]):not([type="radio"]),select,textarea{border-radius:%4$dpx}.button,button,.wp-element-button{border-radius:%5$dpx}',
+            (string) $settings['footer.background'],
+            (string) $settings['footer.text_color'],
+            (int) $settings['layout.card_radius'],
+            (int) $settings['style.input_radius'],
+            (int) $settings['style.button_radius']
+        );
+        if (!empty($settings['custom.enabled']) && !empty($settings['custom.css'])) {
+            $css .= "\n" . (string) $settings['custom.css'];
+        }
+        wp_add_inline_style('woact-style', $css);
+    }
+
+    public function render_classic_banner(): void
+    {
+        $settings = $this->get_settings();
+        if (
+            empty($settings['banner.enabled'])
+            || (function_exists('woact_core_get_request_render_mode') && woact_core_get_request_render_mode() === 'react')
+        ) {
+            return;
+        }
+        $text = (string) $settings['banner.text'];
+        if ($text === '') {
+            return;
+        }
+        $content = esc_html($text);
+        if (!empty($settings['banner.link'])) {
+            $content = '<a href="' . esc_url((string) $settings['banner.link']) . '">' . $content . '</a>';
+        }
+        $style = sprintf(
+            'background:%s;color:%s',
+            esc_attr((string) $settings['banner.background']),
+            esc_attr((string) $settings['banner.text_color'])
+        );
+        $close = !empty($settings['banner.closable'])
+            ? '<button type="button" data-woact-dismiss-banner aria-label="' . esc_attr__('بستن اعلان', 'woact-core') . '">×</button>'
+            : '';
+        echo '<aside class="woact-announcement" role="status" style="' . $style . '">' . wp_kses_post($content) . $close . '</aside>';
+    }
+
+    public function print_custom_head_script(): void
+    {
+        $settings = $this->get_settings();
+        if (!empty($settings['custom.enabled']) && !empty($settings['custom.js_head'])) {
+            wp_print_inline_script_tag((string) $settings['custom.js_head'], ['id' => 'woact-custom-head']);
+        }
+    }
+
+    public function print_custom_footer_script(): void
+    {
+        $settings = $this->get_settings();
+        if (!empty($settings['banner.enabled']) && !empty($settings['banner.closable'])) {
+            wp_print_inline_script_tag(
+                'document.addEventListener("click",function(event){var button=event.target.closest("[data-woact-dismiss-banner]");if(button){var banner=button.closest(".woact-announcement");if(banner){banner.remove();}}});',
+                ['id' => 'woact-banner-controls']
+            );
+        }
+        if (!empty($settings['custom.enabled']) && !empty($settings['custom.js_footer'])) {
+            wp_print_inline_script_tag((string) $settings['custom.js_footer'], ['id' => 'woact-custom-footer']);
+        }
+    }
+
+    public function maybe_render_maintenance(): void
+    {
+        $settings = $this->get_settings();
+        if (
+            empty($settings['maintenance.enabled'])
+            || is_admin()
+            || wp_doing_ajax()
+            || (defined('REST_REQUEST') && REST_REQUEST)
+            || current_user_can('manage_options')
+        ) {
+            return;
+        }
+        status_header(503);
+        nocache_headers();
+        $title = esc_html((string) $settings['maintenance.title']);
+        $message = nl2br(esc_html((string) $settings['maintenance.message']));
+        $image = !empty($settings['maintenance.image'])
+            ? '<img src="' . esc_url((string) $settings['maintenance.image']) . '" alt="" style="max-width:360px;height:auto">'
+            : '';
+        wp_die(
+            '<main style="max-width:720px;margin:12vh auto;text-align:center;font-family:Tahoma,Arial,sans-serif">' . $image . '<h1>' . $title . '</h1><p>' . $message . '</p></main>',
+            $title,
+            ['response' => 503]
+        );
+    }
+
+    private function apply_performance_settings(): void
+    {
+        $settings = $this->get_settings();
+        if (!empty($settings['performance.disable_emojis'])) {
+            remove_action('wp_head', 'print_emoji_detection_script', 7);
+            remove_action('wp_print_styles', 'print_emoji_styles');
+            remove_action('admin_print_scripts', 'print_emoji_detection_script');
+            remove_action('admin_print_styles', 'print_emoji_styles');
+        }
+        if (!empty($settings['performance.disable_embeds'])) {
+            remove_action('wp_head', 'wp_oembed_add_discovery_links');
+            remove_action('wp_head', 'wp_oembed_add_host_js');
+        }
     }
 
     public function add_settings_link(array $links): array

@@ -1,4 +1,4 @@
-name: Woact Stage 1
+name: Woact Stage 2
 
 on:
   push:
@@ -21,8 +21,8 @@ jobs:
           php-version: "8.3"
       - name: JavaScript policy tests
         run: npm test
-      - name: PHP policy tests
-        run: php tests/php/render-policy-test.php
+      - name: PHP settings and policy tests
+        run: for test_file in tests/php/*.php; do php "$test_file"; done
       - name: PHP syntax
         run: find wordpress -name '*.php' -print0 | xargs -0 -n1 php -l
       - name: Stage structure
@@ -31,6 +31,6 @@ jobs:
         run: npm run package
       - uses: actions/upload-artifact@v4
         with:
-          name: woact-stage1-0.1.0-rc1
+          name: woact-stage2-0.2.0-rc1
           path: build/*.zip
 

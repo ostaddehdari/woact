@@ -3,7 +3,7 @@
  * Plugin Name: Woact Core
  * Plugin URI: https://github.com/ostaddehdari/woact
  * Description: تنظیمات پایه، سیاست رندر و پل دادهٔ قالب React ووکت.
- * Version: 0.1.0-rc1
+ * Version: 0.2.0-rc1
  * Requires at least: 6.5
  * Requires PHP: 7.4
  * Author: Ostad Dehdari
@@ -15,11 +15,13 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('WOACT_CORE_VERSION', '0.1.0-rc1');
+define('WOACT_CORE_VERSION', '0.2.0-rc1');
 define('WOACT_CORE_FILE', __FILE__);
 define('WOACT_CORE_DIR', plugin_dir_path(__FILE__));
 
 require_once WOACT_CORE_DIR . 'includes/class-woact-render-policy.php';
+require_once WOACT_CORE_DIR . 'includes/class-woact-settings.php';
+require_once WOACT_CORE_DIR . 'includes/class-woact-settings-rest-controller.php';
 require_once WOACT_CORE_DIR . 'includes/class-woact-core.php';
 
 register_activation_hook(__FILE__, ['Woact_Core', 'activate']);
