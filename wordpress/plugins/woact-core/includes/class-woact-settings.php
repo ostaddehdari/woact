@@ -159,7 +159,7 @@ final class Woact_Settings
                 'weight' => in_array((string) ($value['weight'] ?? ''), ['100', '200', '300', '400', '500', '600', '700', '800', '900'], true)
                     ? (string) $value['weight']
                     : (string) ($fallback['weight'] ?? '400'),
-                'lineHeight' => max(1, min(3, (float) ($value['lineHeight'] ?? $fallback['lineHeight'] ?? 1.8))),
+                'lineHeight' => max(1.0, min(3.0, (float) ($value['lineHeight'] ?? $fallback['lineHeight'] ?? 1.8))),
             ];
         }
 
