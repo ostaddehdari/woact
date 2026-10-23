@@ -1,0 +1,70 @@
+.woact-render-react {
+  background:
+    radial-gradient(circle at 10% 0, rgba(20, 184, 166, .09), transparent 34rem),
+    var(--woact-background);
+}
+
+.woact-react-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  border-block-end: 1px solid color-mix(in srgb, var(--woact-border), transparent 15%);
+  background: color-mix(in srgb, var(--woact-surface), transparent 8%);
+  backdrop-filter: blur(14px);
+}
+
+.admin-bar .woact-react-header { top: 32px; }
+.woact-react-header__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 72px;
+}
+
+.woact-react-nav ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.woact-react-nav a { color: inherit; text-decoration: none; }
+.woact-react-nav a:hover, .woact-react-nav a:focus-visible { color: var(--woact-primary); }
+.woact-react-footer {
+  margin-block-start: 48px;
+  padding-block: 28px;
+  border-block-start: 1px solid var(--woact-border);
+  background: var(--woact-surface);
+  color: var(--woact-muted);
+}
+.woact-react-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--woact-muted);
+  font-size: .84rem;
+}
+.woact-react-status::before {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #16a34a;
+  content: "";
+}
+.woact-react-error {
+  margin: 32px auto;
+  padding: 24px;
+  max-width: 720px;
+  border: 1px solid #fecaca;
+  border-radius: var(--woact-radius);
+  background: #fff1f2;
+}
+
+@media (max-width: 782px) {
+  .admin-bar .woact-react-header { top: 46px; }
+  .woact-react-header__inner { align-items: flex-start; flex-direction: column; padding-block: 14px; }
+}
+

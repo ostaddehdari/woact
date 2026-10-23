@@ -1,0 +1,77 @@
+/*
+Theme Name: Woact
+Theme URI: https://github.com/ostaddehdari/woact
+Author: Ostad Dehdari
+Author URI: https://github.com/ostaddehdari
+Description: قالب React-first وردپرس با مهاجرت تدریجی و سازگاری با Elementor و افزونه‌های وردپرس.
+Version: 0.1.0-rc1
+Requires at least: 6.5
+Tested up to: 6.7
+Requires PHP: 7.4
+Text Domain: woact
+Domain Path: /languages
+Tags: rtl-language-support, custom-logo, custom-menu, featured-images, threaded-comments, translation-ready, e-commerce
+*/
+
+:root {
+  --woact-primary: #0f766e;
+  --woact-text: #17202a;
+  --woact-muted: #64748b;
+  --woact-border: #e2e8f0;
+  --woact-surface: #ffffff;
+  --woact-background: #f8fafc;
+  --woact-radius: 14px;
+  --woact-container: 1180px;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  color: var(--woact-text);
+  background: var(--woact-background);
+  font-family: Tahoma, Arial, sans-serif;
+  line-height: 1.8;
+}
+a { color: var(--woact-primary); text-decoration-thickness: .08em; text-underline-offset: .18em; }
+img { max-width: 100%; height: auto; }
+button, input, select, textarea { font: inherit; }
+.screen-reader-text {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+.screen-reader-text:focus {
+  width: auto; height: auto; padding: 12px 16px; margin: 8px; clip: auto;
+  background: #fff; color: #111; z-index: 100000;
+}
+.woact-container { width: min(calc(100% - 32px), var(--woact-container)); margin-inline: auto; }
+.woact-site-header, .woact-site-footer { background: var(--woact-surface); border-block-end: 1px solid var(--woact-border); }
+.woact-site-footer { border-block-start: 1px solid var(--woact-border); border-block-end: 0; margin-block-start: 48px; }
+.woact-header-inner, .woact-footer-inner { display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 72px; }
+.woact-brand { display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; font-weight: 800; font-size: 1.2rem; }
+.woact-brand img { max-height: 48px; width: auto; }
+.woact-nav ul { display: flex; flex-wrap: wrap; gap: 20px; margin: 0; padding: 0; list-style: none; }
+.woact-nav a { color: inherit; text-decoration: none; }
+.woact-main { min-height: 60vh; padding-block: 42px; }
+.woact-entry, .woact-card, .woact-empty {
+  padding: clamp(20px, 4vw, 42px); background: var(--woact-surface);
+  border: 1px solid var(--woact-border); border-radius: var(--woact-radius);
+}
+.woact-entry + .woact-entry { margin-block-start: 24px; }
+.woact-entry-title { margin-block: 0 20px; line-height: 1.35; }
+.woact-entry-meta { color: var(--woact-muted); font-size: .92rem; }
+.woact-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 24px; }
+.woact-card { padding: 24px; }
+.woact-card img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 10px; }
+.woact-pagination { margin-block-start: 28px; }
+.woact-pagination .nav-links { display: flex; justify-content: center; gap: 8px; }
+.woact-pagination a, .woact-pagination span { padding: 7px 12px; background: #fff; border: 1px solid var(--woact-border); border-radius: 8px; }
+.alignwide { width: min(100%, 1340px); margin-inline: auto; }
+.alignfull { width: 100vw; margin-inline-start: calc(50% - 50vw); }
+
+@media (max-width: 760px) {
+  .woact-header-inner, .woact-footer-inner { align-items: flex-start; flex-direction: column; padding-block: 16px; }
+  .woact-nav ul { gap: 12px; }
+  .woact-main { padding-block: 24px; }
+}
+
