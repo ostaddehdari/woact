@@ -127,6 +127,8 @@
     var data = props.data || {};
     var site = data.site || {};
     var route = data.route || {};
+    var layouts = data.layouts || {};
+    var Layout = window.WoactLayoutRenderer && window.WoactLayoutRenderer.Layout;
     var view = route.kind === 'singular'
       ? h(SingularView, { content: data.content })
       : route.kind === 'not-found'
@@ -137,9 +139,13 @@
       Fragment,
       null,
       h(Announcement, { settings: data.settings || {} }),
-      h(Header, { site: site, navigation: data.navigation || [] }),
+      Layout && layouts.header
+        ? h(Layout, { payload: layouts.header })
+        : h(Header, { site: site, navigation: data.navigation || [] }),
       h('main', { id: 'woact-main', className: 'woact-main woact-container' }, view),
-      (data.settings || {})['footer.enabled'] === false ? null : h(
+      (data.settings || {})['footer.enabled'] === false ? null : Layout && layouts.footer
+        ? h(Layout, { payload: layouts.footer })
+        : h(
         'footer',
         { className: 'woact-react-footer' },
         h(

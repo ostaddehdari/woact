@@ -9,7 +9,9 @@ if (function_exists('woact_core_get_settings')) {
     $woact_footer_enabled = !isset($woact_footer_settings['footer.enabled']) || !empty($woact_footer_settings['footer.enabled']);
 }
 ?>
-<?php if ($woact_footer_enabled) : ?>
+<?php if ($woact_footer_enabled && function_exists('woact_core_has_layout') && woact_core_has_layout('footer')) : ?>
+    <?php echo woact_core_render_layout_root('footer'); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+<?php elseif ($woact_footer_enabled) : ?>
 <footer class="woact-site-footer">
     <div class="woact-container woact-footer-inner">
         <?php

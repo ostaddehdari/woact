@@ -11,9 +11,9 @@ The repository is planned as a monorepo containing:
 - a visual page builder;
 - general WordPress and WooCommerce widget packs.
 
-## Stage 2 status
+## Stage 3 status
 
-Stage 1 and Stage 2 are implemented as version `0.2.0-rc1`:
+Stages 1–3 are implemented as version `0.3.0-rc1`:
 
 - installable WordPress theme in `wordpress/themes/woact`;
 - companion settings, API and render-policy plugin in `wordpress/plugins/woact-core`;
@@ -27,11 +27,18 @@ Stage 1 and Stage 2 are implemented as version `0.2.0-rc1`:
 - draft autosave, revisions, restore, presets, import/export and grouped reset;
 - settings for layout, notices, typography, blog, portfolio, WooCommerce, account, social, integrations, performance, maintenance and custom code;
 - CI validation and ZIP packaging.
+- visual React header/footer builder with drag and drop;
+- versioned header/footer JSON documents with separate draft and published states;
+- multiple templates, display conditions, priorities, duplicate, import/export and revision restore;
+- desktop/tablet/mobile visibility, row and column controls, sticky/overlay/shrink behavior;
+- shared React layout renderer for both React routes and classic/Elementor routes;
+- WordPress navigation, user and WooCommerce cart data resolvers.
 
 The safe default is **Hybrid**: all existing WordPress, Gutenberg, Elementor and plugin-built pages keep their native rendering until a page is explicitly moved to React.
 
 See [docs/STAGE1_FA.md](docs/STAGE1_FA.md) for installation, behavior and acceptance criteria.
 See [docs/STAGE2_FA.md](docs/STAGE2_FA.md) for the settings engine and upgrade guide.
+See [docs/STAGE3_FA.md](docs/STAGE3_FA.md) for the header/footer builder and publishing workflow.
 
 ## Roadmap
 
@@ -48,5 +55,5 @@ The implementation is divided into five stages and fifty work packages. See [doc
 
 ## Status
 
-Stage 2 release candidate implemented. Stage 3 will add the visual header and footer builder.
+Stage 3 release candidate implemented. Stage 4 will add the visual React page builder.
 

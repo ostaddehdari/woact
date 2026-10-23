@@ -12,12 +12,16 @@ final class Woact_Core
     private bool $booted = false;
     private Woact_Settings $settings;
     private Woact_Settings_REST_Controller $settings_controller;
+    private Woact_Layouts $layouts;
+    private Woact_Layouts_REST_Controller $layouts_controller;
 
     private function __construct()
     {
         $schema = require WOACT_CORE_DIR . 'includes/settings-schema.php';
         $this->settings = new Woact_Settings(is_array($schema) ? $schema : []);
         $this->settings_controller = new Woact_Settings_REST_Controller($this->settings);
+        $this->layouts = new Woact_Layouts();
+        $this->layouts_controller = new Woact_Layouts_REST_Controller($this->layouts);
     }
 
     public static function instance(): self
@@ -31,6 +35,7 @@ final class Woact_Core
     public static function activate(): void
     {
         self::instance()->settings->install_or_upgrade();
+        self::instance()->layouts->install_or_upgrade();
     }
 
     public function boot(): void
@@ -43,6 +48,9 @@ final class Woact_Core
         if ((int) get_option(Woact_Settings::DB_VERSION_OPTION, 0) < Woact_Settings::SCHEMA_VERSION) {
             $this->settings->install_or_upgrade();
         }
+        if ((int) get_option(Woact_Layouts::DB_VERSION_OPTION, 0) < Woact_Layouts::SCHEMA_VERSION) {
+            $this->layouts->install_or_upgrade();
+        }
 
         load_plugin_textdomain('woact-core', false, dirname(plugin_basename(WOACT_CORE_FILE)) . '/languages');
         add_action('admin_menu', [$this, 'register_admin_page']);
@@ -51,10 +59,12 @@ final class Woact_Core
         add_action('save_post', [$this, 'save_render_meta_box']);
         add_action('rest_api_init', [$this, 'register_rest_routes']);
         add_action('wp_enqueue_scripts', [$this, 'apply_frontend_settings'], 20);
+        add_action('wp_enqueue_scripts', [$this, 'enqueue_layout_runtime'], 5);
         add_action('wp_body_open', [$this, 'render_classic_banner'], 5);
         add_action('wp_head', [$this, 'print_custom_head_script'], 99);
         add_action('wp_footer', [$this, 'print_custom_footer_script'], 99);
         add_action('template_redirect', [$this, 'maybe_render_maintenance'], 0);
+        add_action('admin_post_woact_layout_preview', [$this, 'render_layout_preview']);
         add_filter('plugin_action_links_' . plugin_basename(WOACT_CORE_FILE), [$this, 'add_settings_link']);
         $this->apply_performance_settings();
     }
@@ -79,34 +89,53 @@ final class Woact_Core
             'dashicons-layout',
             58
         );
+        add_submenu_page(
+            'woact',
+            __('تنظیمات Woact', 'woact-core'),
+            __('تنظیمات', 'woact-core'),
+            'manage_options',
+            'woact',
+            [$this, 'render_settings_page']
+        );
+        add_submenu_page(
+            'woact',
+            __('هدر و فوتر ساز', 'woact-core'),
+            __('هدر و فوتر ساز', 'woact-core'),
+            'manage_options',
+            'woact-layouts',
+            [$this, 'render_layouts_page']
+        );
     }
 
     public function enqueue_admin_assets(string $hook): void
     {
-        if ($hook !== 'toplevel_page_woact') {
+        if ($hook === 'toplevel_page_woact') {
+            wp_enqueue_media();
+            $css_file = WOACT_CORE_DIR . 'assets/admin-settings.css';
+            $js_file = WOACT_CORE_DIR . 'assets/admin-settings.js';
+            wp_enqueue_style('woact-admin-settings', plugins_url('assets/admin-settings.css', WOACT_CORE_FILE), [], is_file($css_file) ? (string) filemtime($css_file) : WOACT_CORE_VERSION);
+            wp_enqueue_script('woact-admin-settings', plugins_url('assets/admin-settings.js', WOACT_CORE_FILE), ['wp-element', 'wp-api-fetch', 'wp-i18n'], is_file($js_file) ? (string) filemtime($js_file) : WOACT_CORE_VERSION, true);
+            wp_add_inline_script('woact-admin-settings', 'window.WoactAdminConfig=' . wp_json_encode([
+                'apiRoot' => esc_url_raw(rest_url('woact/v1')),
+                'nonce' => wp_create_nonce('wp_rest'),
+                'version' => WOACT_CORE_VERSION,
+                'locale' => get_locale(),
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ';', 'before');
+            return;
+        }
+        if ($hook !== 'woact_page_woact-layouts') {
             return;
         }
         wp_enqueue_media();
-        $css_file = WOACT_CORE_DIR . 'assets/admin-settings.css';
-        $js_file = WOACT_CORE_DIR . 'assets/admin-settings.js';
-        wp_enqueue_style(
-            'woact-admin-settings',
-            plugins_url('assets/admin-settings.css', WOACT_CORE_FILE),
-            [],
-            is_file($css_file) ? (string) filemtime($css_file) : WOACT_CORE_VERSION
-        );
-        wp_enqueue_script(
-            'woact-admin-settings',
-            plugins_url('assets/admin-settings.js', WOACT_CORE_FILE),
-            ['wp-element', 'wp-api-fetch', 'wp-i18n'],
-            is_file($js_file) ? (string) filemtime($js_file) : WOACT_CORE_VERSION,
-            true
-        );
-        wp_add_inline_script('woact-admin-settings', 'window.WoactAdminConfig=' . wp_json_encode([
-            'apiRoot' => esc_url_raw(rest_url('woact/v1')),
+        $css_file = WOACT_CORE_DIR . 'assets/admin-layout-builder.css';
+        $js_file = WOACT_CORE_DIR . 'assets/admin-layout-builder.js';
+        wp_enqueue_style('woact-admin-layout-builder', plugins_url('assets/admin-layout-builder.css', WOACT_CORE_FILE), [], is_file($css_file) ? (string) filemtime($css_file) : WOACT_CORE_VERSION);
+        wp_enqueue_style('woact-layout-runtime', plugins_url('assets/layout-runtime.css', WOACT_CORE_FILE), [], WOACT_CORE_VERSION);
+        wp_enqueue_script('woact-layout-runtime', plugins_url('assets/layout-runtime.js', WOACT_CORE_FILE), ['wp-element'], WOACT_CORE_VERSION, true);
+        wp_enqueue_script('woact-admin-layout-builder', plugins_url('assets/admin-layout-builder.js', WOACT_CORE_FILE), ['wp-element', 'wp-api-fetch', 'woact-layout-runtime'], is_file($js_file) ? (string) filemtime($js_file) : WOACT_CORE_VERSION, true);
+        wp_add_inline_script('woact-admin-layout-builder', 'window.WoactBuilderConfig=' . wp_json_encode([
             'nonce' => wp_create_nonce('wp_rest'),
             'version' => WOACT_CORE_VERSION,
-            'locale' => get_locale(),
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ';', 'before');
     }
 
@@ -126,6 +155,16 @@ final class Woact_Core
             <noscript><?php esc_html_e('برای استفاده از پنل تنظیمات، JavaScript مرورگر را فعال کنید.', 'woact-core'); ?></noscript>
         </div>
         <?php
+    }
+
+    public function render_layouts_page(): void
+    {
+        if (!current_user_can('manage_options')) {
+            return;
+        }
+        echo '<div class="wrap woact-builder-wrap" dir="rtl"><div id="woact-layout-builder-root">';
+        echo '<div class="woact-builder-loading"><span class="spinner is-active"></span><p>' . esc_html__('در حال بارگذاری هدر و فوتر ساز…', 'woact-core') . '</p></div>';
+        echo '</div><noscript>' . esc_html__('برای استفاده از سازنده، JavaScript را فعال کنید.', 'woact-core') . '</noscript></div>';
     }
 
     public function register_render_meta_box(): void
@@ -270,6 +309,10 @@ final class Woact_Core
             'navigation' => $this->get_navigation(),
             'content' => $this->get_route_content(),
             'settings' => $this->get_public_settings(),
+            'layouts' => [
+                'header' => $this->layouts->get_runtime_payload('header'),
+                'footer' => $this->layouts->get_runtime_payload('footer'),
+            ],
         ];
 
         if (is_user_logged_in()) {
@@ -380,6 +423,7 @@ final class Woact_Core
     public function register_rest_routes(): void
     {
         $this->settings_controller->register_routes();
+        $this->layouts_controller->register_routes();
         register_rest_route('woact/v1', '/status', [
             'methods' => WP_REST_Server::READABLE,
             'permission_callback' => '__return_true',
@@ -424,6 +468,66 @@ final class Woact_Core
             'footer.text_color',
         ];
         return array_intersect_key($settings, array_flip($allowed));
+    }
+
+    public function has_layout(string $type): bool
+    {
+        return $this->layouts->resolve($type) !== null;
+    }
+
+    public function render_layout_root(string $type): string
+    {
+        $payload = $this->layouts->get_runtime_payload($type);
+        if (!$payload) {
+            return '';
+        }
+        $id = $type === 'footer' ? 'woact-footer-root' : 'woact-header-root';
+        return '<div id="' . esc_attr($id) . '" data-woact-layout-root="' . esc_attr($type) . '">' . $this->layouts->render_fallback($payload) . '</div>';
+    }
+
+    public function enqueue_layout_runtime(): void
+    {
+        $header = $this->layouts->get_runtime_payload('header');
+        $footer = $this->layouts->get_runtime_payload('footer');
+        if (!$header && !$footer) {
+            return;
+        }
+        $css_file = WOACT_CORE_DIR . 'assets/layout-runtime.css';
+        $js_file = WOACT_CORE_DIR . 'assets/layout-runtime.js';
+        wp_enqueue_style('woact-layout-runtime', plugins_url('assets/layout-runtime.css', WOACT_CORE_FILE), [], is_file($css_file) ? (string) filemtime($css_file) : WOACT_CORE_VERSION);
+        wp_enqueue_script('woact-layout-runtime', plugins_url('assets/layout-runtime.js', WOACT_CORE_FILE), ['wp-element'], is_file($js_file) ? (string) filemtime($js_file) : WOACT_CORE_VERSION, true);
+        wp_add_inline_script('woact-layout-runtime', 'window.WoactLayoutsBootstrap=' . wp_json_encode([
+            'header' => $header,
+            'footer' => $footer,
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ';', 'before');
+    }
+
+    public function render_layout_preview(): void
+    {
+        if (!current_user_can('manage_options')) {
+            wp_die(esc_html__('دسترسی ندارید.', 'woact-core'), '', ['response' => 403]);
+        }
+        check_admin_referer('woact_layout_preview');
+        $id = isset($_GET['id']) ? sanitize_key(wp_unslash($_GET['id'])) : '';
+        $template = $this->layouts->get_template($id);
+        if (!$template) {
+            wp_die(esc_html__('قالب پیدا نشد.', 'woact-core'), '', ['response' => 404]);
+        }
+        $preview = $template;
+        $preview['published'] = $template['draft'];
+        $payload = $this->layouts->get_runtime_payload($template['type'], $preview);
+        $root_id = $template['type'] === 'footer' ? 'woact-footer-root' : 'woact-header-root';
+        ?><!doctype html>
+        <html <?php language_attributes(); ?>><head><meta charset="<?php bloginfo('charset'); ?>"><meta name="viewport" content="width=device-width,initial-scale=1">
+        <link rel="stylesheet" href="<?php echo esc_url(plugins_url('assets/layout-runtime.css', WOACT_CORE_FILE)); ?>?ver=<?php echo esc_attr(WOACT_CORE_VERSION); ?>">
+        <style>body{margin:0;background:#f1f5f9;font-family:Tahoma,Arial,sans-serif}.woact-preview-note{padding:10px 16px;background:#0f172a;color:#fff;text-align:center;font-size:13px}</style></head><body>
+        <div class="woact-preview-note"><?php esc_html_e('پیش‌نمایش پیش‌نویس Woact', 'woact-core'); ?></div>
+        <div id="<?php echo esc_attr($root_id); ?>" data-woact-layout-root="<?php echo esc_attr($template['type']); ?>"><?php echo $this->layouts->render_fallback($payload); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div>
+        <script>window.WoactLayoutsBootstrap=<?php echo wp_json_encode([$template['type'] => $payload], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;</script>
+        <?php wp_print_scripts('wp-element'); ?>
+        <script src="<?php echo esc_url(plugins_url('assets/layout-runtime.js', WOACT_CORE_FILE)); ?>?ver=<?php echo esc_attr(WOACT_CORE_VERSION); ?>"></script>
+        </body></html><?php
+        exit;
     }
 
     public function apply_frontend_settings(): void

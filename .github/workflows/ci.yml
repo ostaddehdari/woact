@@ -1,4 +1,4 @@
-name: Woact Stage 2
+name: Woact Stage 3
 
 on:
   push:
@@ -31,6 +31,6 @@ jobs:
         run: npm run package
       - uses: actions/upload-artifact@v4
         with:
-          name: woact-stage2-0.2.0-rc1
+          name: woact-stage3-0.3.0-rc1
           path: build/*.zip
 

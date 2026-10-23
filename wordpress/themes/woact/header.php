@@ -10,6 +10,9 @@
 <body <?php body_class(); ?>>
 <?php wp_body_open(); ?>
 <a class="screen-reader-text" href="#primary"><?php esc_html_e('رفتن به محتوا', 'woact'); ?></a>
+<?php if (function_exists('woact_core_has_layout') && woact_core_has_layout('header')) : ?>
+    <?php echo woact_core_render_layout_root('header'); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+<?php else : ?>
 <header class="woact-site-header">
     <div class="woact-container woact-header-inner">
         <div class="woact-brand">
@@ -24,4 +27,5 @@
         </nav>
     </div>
 </header>
+<?php endif; ?>
 

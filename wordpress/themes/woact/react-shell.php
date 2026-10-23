@@ -8,11 +8,15 @@
 get_header('react');
 ?>
 <div id="woact-root" data-woact-version="<?php echo esc_attr(WOACT_THEME_VERSION); ?>">
+    <?php if (function_exists('woact_core_has_layout') && woact_core_has_layout('header')) : ?>
+        <?php echo woact_core_render_layout_root('header'); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+    <?php else : ?>
     <header class="woact-react-header">
         <div class="woact-container woact-react-header__inner">
             <a class="woact-brand" href="<?php echo esc_url(home_url('/')); ?>"><?php bloginfo('name'); ?></a>
         </div>
     </header>
+    <?php endif; ?>
     <main id="woact-main" class="woact-main woact-container" data-woact-fallback>
         <?php if (is_404()) : ?>
             <section class="woact-empty">
@@ -28,9 +32,13 @@ get_header('react');
             <?php get_template_part('template-parts/content', 'none'); ?>
         <?php endif; ?>
     </main>
+    <?php if (function_exists('woact_core_has_layout') && woact_core_has_layout('footer')) : ?>
+        <?php echo woact_core_render_layout_root('footer'); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+    <?php else : ?>
     <footer class="woact-react-footer">
         <div class="woact-container"><?php echo esc_html(sprintf(__('© %1$s %2$s', 'woact'), wp_date('Y'), get_bloginfo('name'))); ?></div>
     </footer>
+    <?php endif; ?>
 </div>
 <?php get_footer('react'); ?>
 

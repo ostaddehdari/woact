@@ -13,20 +13,26 @@ const required = [
   'wordpress/plugins/woact-core/includes/settings-schema.php',
   'wordpress/plugins/woact-core/assets/admin-settings.js',
   'wordpress/plugins/woact-core/assets/admin-settings.css',
+  'wordpress/plugins/woact-core/includes/class-woact-layouts.php',
+  'wordpress/plugins/woact-core/includes/class-woact-layouts-rest-controller.php',
+  'wordpress/plugins/woact-core/assets/admin-layout-builder.js',
+  'wordpress/plugins/woact-core/assets/admin-layout-builder.css',
+  'wordpress/plugins/woact-core/assets/layout-runtime.js',
+  'wordpress/plugins/woact-core/assets/layout-runtime.css',
 ];
 
 const missing = required.filter((path) => !existsSync(path));
 if (missing.length) {
-  throw new Error(`Stage 2 files missing:\n${missing.join('\n')}`);
+  throw new Error(`Stage 3 files missing:\n${missing.join('\n')}`);
 }
 
 const theme = readFileSync('wordpress/themes/woact/style.css', 'utf8');
 const plugin = readFileSync('wordpress/plugins/woact-core/woact-core.php', 'utf8');
 for (const [name, source] of [['theme', theme], ['plugin', plugin]]) {
-  if (!source.includes('0.2.0-rc1')) {
-    throw new Error(`${name} version is not 0.2.0-rc1`);
+  if (!source.includes('0.3.0-rc1')) {
+    throw new Error(`${name} version is not 0.3.0-rc1`);
   }
 }
 
-console.log('Woact Stage 2 structure is valid.');
+console.log('Woact Stage 3 structure is valid.');
 
