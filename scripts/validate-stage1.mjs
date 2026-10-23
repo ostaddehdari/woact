@@ -19,6 +19,7 @@ const required = [
   'wordpress/plugins/woact-core/assets/admin-layout-builder.css',
   'wordpress/plugins/woact-core/assets/layout-runtime.js',
   'wordpress/plugins/woact-core/assets/layout-runtime.css',
+  'wordpress/plugins/woact-core/examples/woact-ai-header-footer-example.json',
 ];
 
 const missing = required.filter((path) => !existsSync(path));
@@ -29,8 +30,8 @@ if (missing.length) {
 const theme = readFileSync('wordpress/themes/woact/style.css', 'utf8');
 const plugin = readFileSync('wordpress/plugins/woact-core/woact-core.php', 'utf8');
 for (const [name, source] of [['theme', theme], ['plugin', plugin]]) {
-  if (!source.includes('0.3.0-rc1')) {
-    throw new Error(`${name} version is not 0.3.0-rc1`);
+  if (!source.includes('0.3.1-rc1')) {
+    throw new Error(`${name} version is not 0.3.1-rc1`);
   }
 }
 

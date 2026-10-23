@@ -66,7 +66,9 @@ final class Woact_Layouts_REST_Controller
             'schemaVersion' => Woact_Layouts::SCHEMA_VERSION,
             'templates' => $templates,
             'manifest' => $this->layouts->get_manifest(),
+            'runtimeData' => $this->layouts->get_runtime_data(),
             'postTypes' => $this->post_types(),
+            'sampleUrl' => plugins_url('examples/woact-ai-header-footer-example.json', WOACT_CORE_FILE),
             'previewUrl' => add_query_arg([
                 'action' => 'woact_layout_preview',
                 '_wpnonce' => wp_create_nonce('woact_layout_preview'),
@@ -132,11 +134,29 @@ final class Woact_Layouts_REST_Controller
     public function import(WP_REST_Request $request)
     {
         $params = $request->get_json_params();
-        $result = $this->layouts->import(
-            is_array($params['document'] ?? null) ? $params['document'] : [],
-            get_current_user_id()
-        );
-        return is_wp_error($result) ? $result : new WP_REST_Response($this->expose($result), 201);
+        $document = is_array($params['document'] ?? null) ? $params['document'] : [];
+        $sources = is_array($document['templates'] ?? null) ? $document['templates'] : [];
+        if (!$sources && is_array($document['template'] ?? null)) {
+            $sources = [$document['template']];
+        }
+        if (!$sources) {
+            return new WP_Error('woact_layout_import', __('فایل قالب معتبر نیست.', 'woact-core'), ['status' => 422]);
+        }
+        $imported = [];
+        foreach (array_slice($sources, 0, 20) as $source) {
+            if (!is_array($source)) {
+                continue;
+            }
+            $result = $this->layouts->import([
+                'schemaVersion' => (int) ($document['schemaVersion'] ?? 0),
+                'template' => $source,
+            ], get_current_user_id());
+            if (is_wp_error($result)) {
+                return $result;
+            }
+            $imported[] = $this->expose($result);
+        }
+        return new WP_REST_Response(['templates' => $imported, 'count' => count($imported)], 201);
     }
 
     public function expose(array $template): array

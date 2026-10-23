@@ -20,7 +20,7 @@ $clean = $layouts->sanitize_document([
     'settings' => ['mobileBreakpoint' => 5000, 'sticky' => true, 'className' => 'safe<script>'],
     'rows' => [[
         'id' => 'row<>1',
-        'style' => ['width' => 'invalid', 'minHeight' => 900, 'gap' => -4, 'background' => 'red', 'color' => '#ABCDEF'],
+        'style' => ['width' => 'invalid', 'minHeight' => 900, 'gap' => -4, 'background' => 'red', 'color' => '#ABCDEF', 'shapeBottom' => ['type' => 'wave-triple', 'color' => '#123456', 'height' => 900, 'flip' => true]],
         'columns' => [[
             'id' => 'column-1',
             'width' => 50,
@@ -34,7 +34,7 @@ $clean = $layouts->sanitize_document([
 ], 'header');
 
 $checks = [
-    [$clean['schemaVersion'] === 1, 'Schema version must be present'],
+    [$clean['schemaVersion'] === 2, 'Schema version must be present'],
     [$clean['settings']['mobileBreakpoint'] === 1024, 'Breakpoint must be clamped'],
     [$clean['settings']['className'] === 'safescript', 'Class name must be sanitized'],
     [$clean['rows'][0]['id'] === 'row1', 'Node id must be sanitized'],
@@ -42,6 +42,8 @@ $checks = [
     [$clean['rows'][0]['style']['minHeight'] === 500, 'Row height must be clamped'],
     [$clean['rows'][0]['style']['background'] === '#ffffff', 'Invalid background must fall back'],
     [$clean['rows'][0]['style']['color'] === '#abcdef', 'Color must be normalized'],
+    [$clean['rows'][0]['style']['shapeBottom']['type'] === 'wave-triple', 'Known shape must be preserved'],
+    [$clean['rows'][0]['style']['shapeBottom']['height'] === 240, 'Shape height must be clamped'],
     [$clean['rows'][0]['columns'][0]['width'] === 12, 'Column width must be clamped'],
     [count($clean['rows'][0]['columns'][0]['elements']) === 1, 'Unknown elements must be removed'],
     [$clean['rows'][0]['columns'][0]['elements'][0]['props']['label'] === 'خرید', 'Labels must be sanitized'],

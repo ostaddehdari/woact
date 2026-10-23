@@ -13,7 +13,7 @@ The repository is planned as a monorepo containing:
 
 ## Stage 3 status
 
-Stages 1–3 are implemented as version `0.3.0-rc1`:
+Stages 1–3 are implemented as version `0.3.1-rc1`:
 
 - installable WordPress theme in `wordpress/themes/woact`;
 - companion settings, API and render-policy plugin in `wordpress/plugins/woact-core`;

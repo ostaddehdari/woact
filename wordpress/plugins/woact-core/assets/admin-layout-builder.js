@@ -22,11 +22,20 @@
   }
 
   function Palette(props) {
+    var _tab = useState('elements'), tab = _tab[0], setTab = _tab[1];
+    var _query = useState(''), query = _query[0], setQuery = _query[1];
     var groups = props.manifest.categories || [];
     return h('aside', { className: 'woact-builder-palette' },
+      h('div', { className: 'woact-builder-panel-tabs' },
+        h('button', { type: 'button', className: tab === 'elements' ? 'is-active' : '', onClick: function () { setTab('elements'); } }, 'المان‌ها'),
+        h('button', { type: 'button', className: tab === 'navigator' ? 'is-active' : '', onClick: function () { setTab('navigator'); } }, 'ناوبری')
+      ),
+      tab === 'elements' ? h(Fragment, null,
       h('div', { className: 'woact-builder-panel-title' }, h('strong', null, 'عناصر'), h('span', null, 'بکشید و رها کنید')),
+      h('div', { className: 'woact-builder-search' }, h('span', { className: 'dashicons dashicons-search' }), h('input', { type: 'search', value: query, placeholder: 'جست‌وجوی المان…', onChange: function (event) { setQuery(event.target.value); } })),
       groups.map(function (group) {
-        var items = (props.manifest.elements || []).filter(function (item) { return item.category === group.id; });
+        var normalized = query.trim().toLowerCase();
+        var items = (props.manifest.elements || []).filter(function (item) { return item.category === group.id && (!normalized || item.label.toLowerCase().indexOf(normalized) !== -1 || item.type.indexOf(normalized) !== -1); });
         if (!items.length) return null;
         return h('section', { key: group.id }, h('h3', null, group.label), h('div', { className: 'woact-builder-elements' }, items.map(function (item) {
           return h('button', {
@@ -35,7 +44,15 @@
             onClick: function () { props.quickAdd(item.type); },
           }, h('span', { className: 'dashicons dashicons-' + item.icon }), h('span', null, item.label));
         })));
-      })
+      })) : h('div', { className: 'woact-navigator' }, (props.template.draft.rows || []).map(function (row, rowIndex) {
+        return h('div', { className: 'woact-navigator__row', key: row.id },
+          h('button', { type: 'button', onClick: function () { props.select({ kind: 'row', rowId: row.id }); } }, h('span', { className: 'dashicons dashicons-screenoptions' }), 'ردیف ' + (rowIndex + 1)),
+          (row.columns || []).map(function (column, columnIndex) { return h('div', { className: 'woact-navigator__column', key: column.id },
+            h('button', { type: 'button', onClick: function () { props.select({ kind: 'column', rowId: row.id, columnId: column.id }); } }, 'ستون ' + (columnIndex + 1)),
+            (column.elements || []).map(function (item) { var def = (props.manifest.elements || []).find(function (entry) { return entry.type === item.type; }); return h('button', { type: 'button', className: 'woact-navigator__element', key: item.id, onClick: function () { props.select({ kind: 'element', rowId: row.id, columnId: column.id, elementId: item.id }); } }, def ? def.label : item.type); })
+          ); })
+        );
+      }))
     );
   }
 
@@ -50,42 +67,48 @@
   function CanvasElement(props) {
     var item = props.element;
     var definition = props.definitions[item.type] || { label: item.type, icon: 'admin-generic' };
+    var RuntimeElement = window.WoactLayoutRenderer && window.WoactLayoutRenderer.Element;
     return h('div', {
       className: 'woact-canvas-element ' + (props.selected ? 'is-selected ' : '') + (props.hiddenOnDevice ? 'is-device-hidden' : ''),
       draggable: true,
       onDragStart: function (event) { event.stopPropagation(); event.dataTransfer.setData('text/woact', JSON.stringify({ action: 'move', rowId: props.rowId, columnId: props.columnId, elementId: item.id })); },
       onClick: function (event) { event.stopPropagation(); props.select({ kind: 'element', rowId: props.rowId, columnId: props.columnId, elementId: item.id }); },
     },
-    h('span', { className: 'dashicons dashicons-' + definition.icon }),
-    h('strong', null, definition.label),
-    h('div', { className: 'woact-canvas-element__actions' },
-      h('button', { type: 'button', onClick: function (event) { event.stopPropagation(); props.duplicate(); }, title: 'تکثیر' }, '⧉'),
-      h('button', { type: 'button', onClick: function (event) { event.stopPropagation(); props.remove(); }, title: 'حذف' }, '×')
-    ));
+    h('div', { className: 'woact-canvas-element__toolbar' },
+      h('span', { className: 'dashicons dashicons-' + definition.icon }), h('strong', null, definition.label),
+      h('div', { className: 'woact-canvas-element__actions' },
+        h('button', { type: 'button', onClick: function (event) { event.stopPropagation(); props.duplicate(); }, title: 'تکثیر' }, '⧉'),
+        h('button', { type: 'button', onClick: function (event) { event.stopPropagation(); props.remove(); }, title: 'حذف' }, '×')
+      )
+    ),
+    h('div', { className: 'woact-canvas-element__live', onClick: function (event) { event.preventDefault(); } }, RuntimeElement ? h(RuntimeElement, { element: item, data: props.runtimeData }) : definition.label));
   }
 
   function Canvas(props) {
     var document = props.template.draft;
     var definitions = {};
+    var ShapeDivider = window.WoactLayoutRenderer && window.WoactLayoutRenderer.ShapeDivider;
     (props.manifest.elements || []).forEach(function (item) { definitions[item.type] = item; });
     return h('div', { className: 'woact-builder-canvas-shell device-' + props.device },
       h('div', { className: 'woact-builder-canvas', onClick: function () { props.select({ kind: 'document' }); } },
         (document.rows || []).map(function (row, rowIndex) {
           var isRow = props.selected.kind === 'row' && props.selected.rowId === row.id;
           var rowVisible = !row.visibility || row.visibility[props.device] !== false;
-          return h('section', { className: 'woact-canvas-row ' + (isRow ? 'is-selected ' : '') + (rowVisible ? '' : 'is-device-hidden'), key: row.id, onClick: function (event) { event.stopPropagation(); props.select({ kind: 'row', rowId: row.id }); } },
+          var rowStyle = row.style || {};
+          return h('section', { className: 'woact-canvas-row ' + (isRow ? 'is-selected ' : '') + (rowVisible ? '' : 'is-device-hidden'), key: row.id, style: { background: rowStyle.background || '#fff', color: rowStyle.color || '#17202a', minHeight: (rowStyle.minHeight || 64) + 'px', '--woact-editor-gap': (rowStyle.gap || 20) + 'px' }, onClick: function (event) { event.stopPropagation(); props.select({ kind: 'row', rowId: row.id }); } },
             h('div', { className: 'woact-canvas-row__bar' },
               h('span', null, 'ردیف ' + (rowIndex + 1)),
               h('button', { type: 'button', onClick: function (event) { event.stopPropagation(); props.moveRow(row.id, -1); }, disabled: rowIndex === 0 }, '↑'),
               h('button', { type: 'button', onClick: function (event) { event.stopPropagation(); props.moveRow(row.id, 1); }, disabled: rowIndex === document.rows.length - 1 }, '↓'),
               h('button', { type: 'button', onClick: function (event) { event.stopPropagation(); props.removeRow(row.id); } }, 'حذف')
             ),
-            h('div', { className: 'woact-canvas-columns' }, (row.columns || []).map(function (column) {
+            ShapeDivider ? h(ShapeDivider, { shape: rowStyle.shapeTop, position: 'top' }) : null,
+            h('div', { className: 'woact-canvas-columns ' + (rowStyle.width === 'full' ? 'is-full' : '') }, (row.columns || []).map(function (column) {
               var isColumn = props.selected.kind === 'column' && props.selected.columnId === column.id;
               return h('div', {
                 key: column.id,
                 className: 'woact-canvas-column ' + (isColumn ? 'is-selected' : ''),
-                style: { flex: column.width || 12 },
+                style: { gridColumn: 'span ' + (column.width || 12) },
                 onClick: function (event) { event.stopPropagation(); props.select({ kind: 'column', rowId: row.id, columnId: column.id }); },
                 onDragOver: function (event) { event.preventDefault(); event.currentTarget.classList.add('is-drop'); },
                 onDragLeave: function (event) { event.currentTarget.classList.remove('is-drop'); },
@@ -98,6 +121,7 @@
                   key: item.id, element: item, rowId: row.id, columnId: column.id, definitions: definitions,
                   selected: props.selected.kind === 'element' && props.selected.elementId === item.id,
                   hiddenOnDevice: !itemVisible,
+                  runtimeData: props.runtimeData,
                   select: props.select,
                   remove: function () { props.removeElement(row.id, column.id, item.id); },
                   duplicate: function () { props.duplicateElement(row.id, column.id, item.id); },
@@ -105,7 +129,8 @@
               }),
               !column.elements.length ? h('div', { className: 'woact-canvas-drop-hint' }, 'عنصر را اینجا رها کنید') : null
               );
-            }))
+            })),
+            ShapeDivider ? h(ShapeDivider, { shape: rowStyle.shapeBottom, position: 'bottom' }) : null
           );
         }),
         h('div', { className: 'woact-add-row' },
@@ -138,7 +163,25 @@
     }));
   }
 
+  function InspectorTabs(props) {
+    return h('div', { className: 'woact-inspector-tabs' }, [['content', 'محتوا', 'edit'], ['style', 'استایل', 'admin-customizer'], ['advanced', 'پیشرفته', 'admin-generic']].map(function (item) {
+      return h('button', { type: 'button', key: item[0], className: props.value === item[0] ? 'is-active' : '', onClick: function () { props.change(item[0]); } }, h('span', { className: 'dashicons dashicons-' + item[2] }), item[1]);
+    }));
+  }
+
+  function ShapeControls(props) {
+    var shape = props.value || { type: 'none', color: '#ffffff', height: 40, flip: false, invert: false };
+    function change(key, value) { props.change(Object.assign({}, shape, (function () { var out = {}; out[key] = value; return out; })())); }
+    return h('div', { className: 'woact-shape-controls' },
+      h('label', { className: 'woact-inspector-field' }, h('span', null, 'طرح'), h('select', { value: shape.type || 'none', onChange: function (event) { change('type', event.target.value); } }, (props.shapes || []).map(function (item) { return h('option', { key: item.value, value: item.value }, item.label); }))),
+      h('label', { className: 'woact-inspector-field' }, h('span', null, 'رنگ'), h(Control, { field: { type: 'color' }, value: shape.color, change: function (value) { change('color', value); } })),
+      h('label', { className: 'woact-inspector-field' }, h('span', null, 'ارتفاع'), h('input', { type: 'range', min: 10, max: 240, value: shape.height || 40, onChange: function (event) { change('height', Number(event.target.value)); } }), h('small', null, (shape.height || 40) + 'px')),
+      h('div', { className: 'woact-shape-toggles' }, h('label', null, h('input', { type: 'checkbox', checked: !!shape.flip, onChange: function (event) { change('flip', event.target.checked); } }), ' قرینه'), h('label', null, h('input', { type: 'checkbox', checked: !!shape.invert, onChange: function (event) { change('invert', event.target.checked); } }), ' وارونه'))
+    );
+  }
+
   function Inspector(props) {
+    var _tab = useState('content'), tab = _tab[0], setTab = _tab[1];
     var selected = props.selected;
     var document = props.template.draft;
     var row = (document.rows || []).find(function (item) { return item.id === selected.rowId; });
@@ -148,14 +191,15 @@
     function field(label, control) { return h('label', { className: 'woact-inspector-field' }, h('span', null, label), control); }
     if (element) {
       return h('aside', { className: 'woact-builder-inspector' }, h('div', { className: 'woact-builder-panel-title' }, h('strong', null, definition ? definition.label : element.type), h('code', null, element.id)),
-        (definition && definition.fields || []).map(function (item) { return field(item.label, h(Control, { key: item.id, field: item, value: element.props[item.id], change: function (value) { props.changeElement('props', item.id, value); } })); }),
-        h('h3', null, 'استایل'),
-        field('رنگ متن', h(Control, { field: { type: 'color' }, value: element.style.color, change: function (value) { props.changeElement('style', 'color', value); } })),
-        field('پس‌زمینه', h(Control, { field: { type: 'color' }, value: element.style.background, change: function (value) { props.changeElement('style', 'background', value); } })),
-        field('اندازه فونت', h(Control, { field: { type: 'number' }, value: element.style.fontSize, change: function (value) { props.changeElement('style', 'fontSize', value); } })),
-        field('فاصله داخلی', h(Control, { field: { type: 'number' }, value: element.style.padding, change: function (value) { props.changeElement('style', 'padding', value); } })),
-        field('گردی', h(Control, { field: { type: 'number' }, value: element.style.radius, change: function (value) { props.changeElement('style', 'radius', value); } })),
-        h('h3', null, 'نمایش واکنش‌گرا'), h(Visibility, { value: element.visibility, change: function (value) { props.changeElement('visibility', null, value); } })
+        h(InspectorTabs, { value: tab, change: setTab }),
+        tab === 'content' ? h('div', { className: 'woact-inspector-panel' }, (definition && definition.fields || []).map(function (item) { return field(item.label, h(Control, { key: item.id, field: item, value: element.props[item.id], change: function (value) { props.changeElement('props', item.id, value); } })); })) : null,
+        tab === 'style' ? h('div', { className: 'woact-inspector-panel' }, h('h3', null, 'استایل'),
+          field('رنگ متن', h(Control, { field: { type: 'color' }, value: element.style.color, change: function (value) { props.changeElement('style', 'color', value); } })),
+          field('پس‌زمینه', h(Control, { field: { type: 'color' }, value: element.style.background, change: function (value) { props.changeElement('style', 'background', value); } })),
+          field('اندازه فونت', h(Control, { field: { type: 'number' }, value: element.style.fontSize, change: function (value) { props.changeElement('style', 'fontSize', value); } })),
+          field('فاصله داخلی', h(Control, { field: { type: 'number' }, value: element.style.padding, change: function (value) { props.changeElement('style', 'padding', value); } })),
+          field('گردی', h(Control, { field: { type: 'number' }, value: element.style.radius, change: function (value) { props.changeElement('style', 'radius', value); } }))) : null,
+        tab === 'advanced' ? h('div', { className: 'woact-inspector-panel' }, h('h3', null, 'نمایش واکنش‌گرا'), h(Visibility, { value: element.visibility, change: function (value) { props.changeElement('visibility', null, value); } })) : null
       );
     }
     if (column) {
@@ -167,14 +211,20 @@
     if (row) {
       var rs = row.style || {};
       return h('aside', { className: 'woact-builder-inspector' }, h('div', { className: 'woact-builder-panel-title' }, h('strong', null, 'تنظیمات ردیف')),
+        h(InspectorTabs, { value: tab, change: setTab }),
+        tab === 'content' ? h('div', { className: 'woact-inspector-panel' },
         field('عرض', h('select', { value: rs.width, onChange: function (event) { props.changeRow('width', event.target.value); } }, h('option', { value: 'contained' }, 'داخل کانتینر'), h('option', { value: 'full' }, 'تمام عرض'))),
         field('حداقل ارتفاع', h(Control, { field: { type: 'number' }, value: rs.minHeight, change: function (value) { props.changeRow('minHeight', value); } })),
-        field('فاصله عناصر', h(Control, { field: { type: 'number' }, value: rs.gap, change: function (value) { props.changeRow('gap', value); } })),
+        field('فاصله عناصر', h(Control, { field: { type: 'number' }, value: rs.gap, change: function (value) { props.changeRow('gap', value); } }))) : null,
+        tab === 'style' ? h('div', { className: 'woact-inspector-panel' },
         field('پس‌زمینه', h(Control, { field: { type: 'color' }, value: rs.background, change: function (value) { props.changeRow('background', value); } })),
         field('رنگ متن', h(Control, { field: { type: 'color' }, value: rs.color, change: function (value) { props.changeRow('color', value); } })),
+        h('details', { className: 'woact-shape-section', open: true }, h('summary', null, 'جداکنندهٔ بالای ردیف'), h(ShapeControls, { value: rs.shapeTop, shapes: props.manifest.shapes, change: function (value) { props.changeRow('shapeTop', value); } })),
+        h('details', { className: 'woact-shape-section' }, h('summary', null, 'جداکنندهٔ پایین ردیف'), h(ShapeControls, { value: rs.shapeBottom, shapes: props.manifest.shapes, change: function (value) { props.changeRow('shapeBottom', value); } }))) : null,
+        tab === 'advanced' ? h('div', { className: 'woact-inspector-panel' },
         field('چسبان', h(Control, { field: { type: 'switch' }, value: rs.sticky, change: function (value) { props.changeRow('sticky', value); } })),
         field('هم‌پوشان', h(Control, { field: { type: 'switch' }, value: rs.overlay, change: function (value) { props.changeRow('overlay', value); } })),
-        h('h3', null, 'نمایش واکنش‌گرا'), h(Visibility, { value: row.visibility, change: props.changeRowVisibility })
+        h('h3', null, 'نمایش واکنش‌گرا'), h(Visibility, { value: row.visibility, change: props.changeRowVisibility })) : null
       );
     }
     return h('aside', { className: 'woact-builder-inspector' }, h('div', { className: 'woact-builder-panel-title' }, h('strong', null, 'تنظیمات سند')),
@@ -290,7 +340,12 @@
     }
     function importTemplate(event) {
       var file = event.target.files && event.target.files[0]; event.target.value = ''; if (!file) return;
-      file.text().then(JSON.parse).then(function (doc) { return apiFetch({ path: '/woact/v1/admin/layouts/import', method: 'POST', data: { document: doc } }); }).then(function (data) { setPayload(function (current) { return Object.assign({}, current, { templates: current.templates.concat([data]) }); }); loadTemplate(data); }).catch(function (error) { setNotice({ type: 'error', message: error.message || 'فایل معتبر نیست.' }); });
+      file.text().then(JSON.parse).then(function (doc) { return apiFetch({ path: '/woact/v1/admin/layouts/import', method: 'POST', data: { document: doc } }); }).then(function (data) { var imported = data.templates || []; setPayload(function (current) { return Object.assign({}, current, { templates: current.templates.concat(imported) }); }); if (imported[0]) loadTemplate(imported[0]); setNotice({ type: 'success', message: imported.length + ' قالب با موفقیت درون‌ریزی شد.' }); }).catch(function (error) { setNotice({ type: 'error', message: error.message || 'فایل معتبر نیست.' }); });
+    }
+    function copyAiPrompt() {
+      var prompt = 'یک فایل JSON معتبر برای Woact Layout Bundle با schemaVersion برابر 2 بساز. خروجی فقط JSON باشد و شامل آرایه templates با دقیقاً یک header و یک footer باشد. هر template شامل type، title، priority، conditions و document است. فقط از element typeهای زیر استفاده کن: ' + payload.manifest.elements.map(function (item) { return item.type; }).join(', ') + '. فقط از shape typeهای زیر استفاده کن: ' + payload.manifest.shapes.map(function (item) { return item.value; }).join(', ') + '. ساختار دقیق را از فایل نمونه‌ای که همراه این پیام می‌فرستم حفظ کن؛ شناسه‌ها یکتا و انگلیسی باشند.';
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(prompt).then(function () { setNotice({ type: 'success', message: 'پرامپت هوش مصنوعی کپی شد.' }); });
+      else window.prompt('این متن را کپی کنید:', prompt);
     }
     function openPreview() { saveDraft(true).then(function (template) { setPreview(payload.previewUrl + '&id=' + encodeURIComponent(template.id) + '&t=' + Date.now()); }); }
     function restore(revisionId) { if (!window.confirm('نسخه انتخاب‌شده بازگردانی شود؟')) return; apiFetch({ path: '/woact/v1/admin/layouts/' + working.id + '/restore', method: 'POST', data: { revisionId: revisionId } }).then(function (data) { replaceTemplate(data); setHistory(false); setNotice({ type: 'success', message: 'نسخه بازگردانی شد.' }); }); }
@@ -305,7 +360,7 @@
         if (info.action === 'move') { var source = findColumn(next.draft, info.rowId, info.columnId); if (!source) return; var index = source.elements.findIndex(function (item) { return item.id === info.elementId; }); if (index < 0) return; var item = source.elements.splice(index, 1)[0]; target.elements.push(item); }
       });
     }
-    function addRow(count) { commit(function (next) { var width = Math.floor(12 / count); next.draft.rows.push({ id: uid('row'), columns: Array.from({ length: count }, function () { return { id: uid('column'), width: width, align: 'start', elements: [] }; }), style: { width: 'contained', minHeight: 64, gap: 20, background: '#ffffff', color: '#17202a', sticky: false, overlay: false }, visibility: defaultVisibility() }); }); }
+    function addRow(count) { commit(function (next) { var width = Math.floor(12 / count); next.draft.rows.push({ id: uid('row'), columns: Array.from({ length: count }, function () { return { id: uid('column'), width: width, align: 'start', elements: [] }; }), style: { width: 'contained', minHeight: 64, gap: 20, background: '#ffffff', color: '#17202a', sticky: false, overlay: false, shapeTop: { type: 'none', color: '#ffffff', height: 40, flip: false, invert: false }, shapeBottom: { type: 'none', color: '#ffffff', height: 40, flip: false, invert: false } }, visibility: defaultVisibility() }); }); }
     function removeRow(id) { if (working.draft.rows.length < 2) return setNotice({ type: 'warning', message: 'حداقل یک ردیف باید باقی بماند.' }); commit(function (next) { next.draft.rows = next.draft.rows.filter(function (item) { return item.id !== id; }); }); setSelected({ kind: 'document' }); }
     function moveRow(id, direction) { commit(function (next) { var index = next.draft.rows.findIndex(function (item) { return item.id === id; }); var target = index + direction; if (index < 0 || target < 0 || target >= next.draft.rows.length) return; var row = next.draft.rows[index]; next.draft.rows[index] = next.draft.rows[target]; next.draft.rows[target] = row; }); }
     function removeElement(rowId, columnId, id) { commit(function (next) { var col = findColumn(next.draft, rowId, columnId); col.elements = col.elements.filter(function (item) { return item.id !== id; }); }); setSelected({ kind: 'column', rowId: rowId, columnId: columnId }); }
@@ -334,21 +389,23 @@
           h('div', { className: 'woact-builder-topbar__actions' },
             h('button', { type: 'button', disabled: !undoRef.current.length, onClick: undo, title: 'واگرد' }, '↶'),
             h('button', { type: 'button', disabled: !redoRef.current.length, onClick: redo, title: 'بازانجام' }, '↷'),
-            h('button', { type: 'button', onClick: openPreview }, 'پیش‌نمایش'),
+            h('button', { type: 'button', onClick: openPreview }, 'نمایش تمام‌صفحه'),
             h('button', { type: 'button', disabled: !dirty || saving, onClick: function () { saveDraft(false); } }, saving ? 'ذخیره…' : 'ذخیره پیش‌نویس'),
             h('button', { type: 'button', className: 'button-primary', onClick: publish }, 'انتشار')
           )
         ),
         h(Notice, { value: notice, close: function () { setNotice(null); } }),
-        h('div', { className: 'woact-builder-status' }, h('span', { className: dirty ? 'is-dirty' : 'is-saved' }, dirty ? 'تغییرات ذخیره‌نشده' : 'ذخیره شده'), h('span', null, working.active && working.published ? 'منتشرشده' : 'پیش‌نویس')),
+        h('div', { className: 'woact-builder-status' }, h('span', { className: 'is-live' }, '● پیش‌نمایش زنده React'), h('span', { className: dirty ? 'is-dirty' : 'is-saved' }, dirty ? 'تغییرات ذخیره‌نشده' : 'ذخیره شده'), h('span', null, working.active && working.published ? 'منتشرشده' : 'پیش‌نویس')),
         h('div', { className: 'woact-builder-body' },
-          h(Palette, { manifest: payload.manifest, quickAdd: quickAdd }),
-          h(Canvas, { template: working, manifest: payload.manifest, device: device, selected: selected, select: setSelected, drop: drop, addRow: addRow, removeRow: removeRow, moveRow: moveRow, removeElement: removeElement, duplicateElement: duplicateElement }),
+          h(Palette, { manifest: payload.manifest, template: working, selected: selected, select: setSelected, quickAdd: quickAdd }),
+          h(Canvas, { template: working, manifest: payload.manifest, runtimeData: payload.runtimeData, device: device, selected: selected, select: setSelected, drop: drop, addRow: addRow, removeRow: removeRow, moveRow: moveRow, removeElement: removeElement, duplicateElement: duplicateElement }),
           h(Inspector, { template: working, manifest: payload.manifest, postTypes: payload.postTypes, selected: selected, changeElement: changeElement, changeColumn: changeColumn, changeRow: changeRow, changeRowVisibility: changeRowVisibility, changeTemplate: changeTemplate, changeDocumentSetting: changeDocumentSetting, changeCondition: changeCondition, addCondition: addCondition, removeCondition: removeCondition })
         ),
         h('footer', { className: 'woact-builder-footerbar' },
           h('button', { type: 'button', onClick: duplicate }, 'تکثیر قالب'),
           h('button', { type: 'button', onClick: exportTemplate }, 'خروجی JSON'),
+          h('a', { className: 'woact-builder-download', href: payload.sampleUrl, download: 'woact-ai-header-footer-example.json' }, 'نمونه JSON هوش مصنوعی'),
+          h('button', { type: 'button', onClick: copyAiPrompt }, 'کپی پرامپت AI'),
           h('button', { type: 'button', onClick: function () { importRef.current.click(); } }, 'درون‌ریزی'),
           h('input', { type: 'file', hidden: true, ref: importRef, accept: '.json,application/json', onChange: importTemplate }),
           h('button', { type: 'button', onClick: function () { setHistory(true); } }, 'تاریخچه'),

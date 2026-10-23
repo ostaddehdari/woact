@@ -1,0 +1,68 @@
+{
+  "product": "woact-layout-bundle",
+  "schemaVersion": 2,
+  "version": "0.3.1-rc1",
+  "templates": [
+    {
+      "type": "header",
+      "title": "هدر شرکتی ساخته‌شده با AI",
+      "priority": 50,
+      "conditions": [{ "scope": "entire_site", "value": "", "exclude": false }],
+      "document": {
+        "schemaVersion": 2,
+        "type": "header",
+        "settings": { "mobileBreakpoint": 782, "sticky": true, "shrinkOnScroll": true, "className": "ai-corporate-header" },
+        "rows": [
+          {
+            "id": "ai_header_top",
+            "columns": [
+              { "id": "ai_header_top_left", "width": 6, "align": "start", "elements": [{ "id": "ai_contact", "type": "contact", "props": { "text": "021-00000000 | تهران" }, "style": { "color": "#dbeafe", "background": "", "fontSize": 13, "padding": 0, "radius": 0 }, "visibility": { "desktop": true, "tablet": true, "mobile": false } }] },
+              { "id": "ai_header_top_right", "width": 6, "align": "end", "elements": [{ "id": "ai_social", "type": "social", "props": { "items": "Instagram|https://instagram.com/\nTelegram|https://t.me/" }, "style": { "color": "#ffffff", "background": "", "fontSize": 13, "padding": 0, "radius": 0 }, "visibility": { "desktop": true, "tablet": true, "mobile": false } }] }
+            ],
+            "style": { "width": "contained", "minHeight": 38, "gap": 18, "background": "#0f172a", "color": "#ffffff", "sticky": false, "overlay": false, "shapeTop": { "type": "none", "color": "#ffffff", "height": 40, "flip": false, "invert": false }, "shapeBottom": { "type": "none", "color": "#ffffff", "height": 40, "flip": false, "invert": false } },
+            "visibility": { "desktop": true, "tablet": true, "mobile": false }
+          },
+          {
+            "id": "ai_header_main",
+            "columns": [
+              { "id": "ai_header_logo_col", "width": 3, "align": "start", "elements": [{ "id": "ai_logo", "type": "logo", "props": { "text": "WOACT", "width": 145 }, "style": { "color": "#0f172a", "background": "", "fontSize": 0, "padding": 0, "radius": 0 }, "visibility": { "desktop": true, "tablet": true, "mobile": true } }] },
+              { "id": "ai_header_menu_col", "width": 6, "align": "center", "elements": [{ "id": "ai_menu", "type": "menu", "props": { "location": "primary", "mobileDrawer": true }, "style": { "color": "#0f172a", "background": "", "fontSize": 15, "padding": 0, "radius": 0 }, "visibility": { "desktop": true, "tablet": true, "mobile": true } }] },
+              { "id": "ai_header_actions_col", "width": 3, "align": "end", "elements": [{ "id": "ai_account", "type": "account", "props": { "label": "حساب من" }, "style": { "color": "#0f172a", "background": "", "fontSize": 14, "padding": 6, "radius": 8 }, "visibility": { "desktop": true, "tablet": false, "mobile": false } }, { "id": "ai_cart", "type": "cart", "props": { "label": "سبد", "showCount": true }, "style": { "color": "#ffffff", "background": "#0f766e", "fontSize": 14, "padding": 9, "radius": 10 }, "visibility": { "desktop": true, "tablet": true, "mobile": true } }] }
+            ],
+            "style": { "width": "contained", "minHeight": 78, "gap": 20, "background": "#ffffff", "color": "#0f172a", "sticky": false, "overlay": false, "shapeTop": { "type": "none", "color": "#ffffff", "height": 40, "flip": false, "invert": false }, "shapeBottom": { "type": "wave-triple", "color": "#ecfeff", "height": 34, "flip": false, "invert": false } },
+            "visibility": { "desktop": true, "tablet": true, "mobile": true }
+          }
+        ]
+      }
+    },
+    {
+      "type": "footer",
+      "title": "فوتر شرکتی ساخته‌شده با AI",
+      "priority": 50,
+      "conditions": [{ "scope": "entire_site", "value": "", "exclude": false }],
+      "document": {
+        "schemaVersion": 2,
+        "type": "footer",
+        "settings": { "mobileBreakpoint": 782, "sticky": false, "shrinkOnScroll": false, "className": "ai-corporate-footer" },
+        "rows": [
+          {
+            "id": "ai_footer_main",
+            "columns": [
+              { "id": "ai_footer_about", "width": 4, "align": "start", "elements": [{ "id": "ai_footer_logo", "type": "logo", "props": { "text": "WOACT", "width": 130 }, "style": { "color": "#ffffff", "background": "", "fontSize": 0, "padding": 0, "radius": 0 }, "visibility": { "desktop": true, "tablet": true, "mobile": true } }, { "id": "ai_footer_text", "type": "text", "props": { "content": "یک معرفی کوتاه و حرفه‌ای درباره کسب‌وکار شما." }, "style": { "color": "#cbd5e1", "background": "", "fontSize": 14, "padding": 0, "radius": 0 }, "visibility": { "desktop": true, "tablet": true, "mobile": true } }] },
+              { "id": "ai_footer_links", "width": 4, "align": "center", "elements": [{ "id": "ai_footer_menu", "type": "menu", "props": { "location": "footer", "mobileDrawer": false }, "style": { "color": "#e2e8f0", "background": "", "fontSize": 14, "padding": 0, "radius": 0 }, "visibility": { "desktop": true, "tablet": true, "mobile": true } }] },
+              { "id": "ai_footer_news", "width": 4, "align": "end", "elements": [{ "id": "ai_newsletter", "type": "newsletter", "props": { "title": "خبرهای تازه", "placeholder": "ایمیل شما" }, "style": { "color": "#ffffff", "background": "", "fontSize": 14, "padding": 0, "radius": 0 }, "visibility": { "desktop": true, "tablet": true, "mobile": true } }] }
+            ],
+            "style": { "width": "contained", "minHeight": 210, "gap": 28, "background": "#0f172a", "color": "#e2e8f0", "sticky": false, "overlay": false, "shapeTop": { "type": "mountains", "color": "#0f172a", "height": 60, "flip": false, "invert": false }, "shapeBottom": { "type": "none", "color": "#ffffff", "height": 40, "flip": false, "invert": false } },
+            "visibility": { "desktop": true, "tablet": true, "mobile": true }
+          },
+          {
+            "id": "ai_footer_bottom",
+            "columns": [{ "id": "ai_footer_copy_col", "width": 12, "align": "center", "elements": [{ "id": "ai_copyright", "type": "copyright", "props": { "text": "© {year} {site_name} — همه حقوق محفوظ است." }, "style": { "color": "#94a3b8", "background": "", "fontSize": 12, "padding": 0, "radius": 0 }, "visibility": { "desktop": true, "tablet": true, "mobile": true } }] }],
+            "style": { "width": "contained", "minHeight": 58, "gap": 16, "background": "#020617", "color": "#94a3b8", "sticky": false, "overlay": false, "shapeTop": { "type": "none", "color": "#ffffff", "height": 40, "flip": false, "invert": false }, "shapeBottom": { "type": "none", "color": "#ffffff", "height": 40, "flip": false, "invert": false } },
+            "visibility": { "desktop": true, "tablet": true, "mobile": true }
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -12,13 +12,20 @@ final class Woact_Layouts
 {
     public const OPTION = 'woact_layout_templates';
     public const DB_VERSION_OPTION = 'woact_layouts_db_version';
-    public const SCHEMA_VERSION = 1;
+    public const SCHEMA_VERSION = 2;
 
     private const TYPES = ['header', 'footer'];
     private const ELEMENT_TYPES = [
         'logo', 'menu', 'search', 'button', 'text', 'html', 'icon', 'social', 'language',
         'breadcrumb', 'spacer', 'divider', 'account', 'cart', 'wishlist', 'compare',
         'categories', 'copyright', 'newsletter', 'contact', 'trust_badges', 'payments', 'widget',
+    ];
+
+    private const SHAPE_TYPES = [
+        'none', 'wave', 'wave-soft', 'wave-double', 'wave-triple', 'mountain', 'mountains',
+        'peaks', 'triangle', 'triangle-asym', 'curve', 'curve-asym', 'tilt', 'tilt-split',
+        'arrow', 'fan', 'clouds', 'zigzag', 'steps', 'pyramids', 'book', 'brush', 'city',
+        'organic', 'droplets', 'torn',
     ];
 
     public function install_or_upgrade(): void
@@ -268,8 +275,13 @@ final class Woact_Layouts
             'id' => $template['id'],
             'type' => $type,
             'document' => $document,
-            'data' => $this->runtime_data(),
+            'data' => $this->get_runtime_data(),
         ];
+    }
+
+    public function get_runtime_data(): array
+    {
+        return $this->runtime_data();
     }
 
     public function get_manifest(): array
@@ -307,6 +319,34 @@ final class Woact_Layouts
                 ['id' => 'commerce', 'label' => 'فروشگاه و کاربر'],
                 ['id' => 'footer', 'label' => 'فوتر'],
                 ['id' => 'layout', 'label' => 'چیدمان'],
+            ],
+            'shapes' => [
+                ['value' => 'none', 'label' => 'بدون جداکننده'],
+                ['value' => 'wave', 'label' => 'موج'],
+                ['value' => 'wave-soft', 'label' => 'موج نرم'],
+                ['value' => 'wave-double', 'label' => 'موج دوتایی'],
+                ['value' => 'wave-triple', 'label' => 'موج سه‌تایی'],
+                ['value' => 'mountain', 'label' => 'کوه'],
+                ['value' => 'mountains', 'label' => 'رشته‌کوه'],
+                ['value' => 'peaks', 'label' => 'قله‌ها'],
+                ['value' => 'triangle', 'label' => 'مثلث'],
+                ['value' => 'triangle-asym', 'label' => 'مثلث نامتقارن'],
+                ['value' => 'curve', 'label' => 'قوس'],
+                ['value' => 'curve-asym', 'label' => 'قوس نامتقارن'],
+                ['value' => 'tilt', 'label' => 'شیب'],
+                ['value' => 'tilt-split', 'label' => 'شیب شکسته'],
+                ['value' => 'arrow', 'label' => 'فلش'],
+                ['value' => 'fan', 'label' => 'بادبزن'],
+                ['value' => 'clouds', 'label' => 'ابرها'],
+                ['value' => 'zigzag', 'label' => 'زیگزاگ'],
+                ['value' => 'steps', 'label' => 'پله‌ای'],
+                ['value' => 'pyramids', 'label' => 'هرمی'],
+                ['value' => 'book', 'label' => 'کتابی'],
+                ['value' => 'brush', 'label' => 'قلم‌مو'],
+                ['value' => 'city', 'label' => 'شهر'],
+                ['value' => 'organic', 'label' => 'ارگانیک'],
+                ['value' => 'droplets', 'label' => 'قطره‌ها'],
+                ['value' => 'torn', 'label' => 'کاغذ پاره'],
             ],
             'breakpoints' => ['desktop' => 1200, 'tablet' => 782, 'mobile' => 480],
         ];
@@ -355,6 +395,8 @@ final class Woact_Layouts
                     'color' => $this->color((string) ($row_style['color'] ?? '#17202a'), '#17202a'),
                     'sticky' => !empty($row_style['sticky']),
                     'overlay' => !empty($row_style['overlay']),
+                    'shapeTop' => $this->sanitize_shape((array) ($row_style['shapeTop'] ?? [])),
+                    'shapeBottom' => $this->sanitize_shape((array) ($row_style['shapeBottom'] ?? [])),
                 ],
                 'visibility' => $this->sanitize_visibility((array) ($row['visibility'] ?? [])),
             ];
@@ -386,7 +428,9 @@ final class Woact_Layouts
                 (int) ($row['style']['minHeight'] ?? 64),
                 (int) ($row['style']['gap'] ?? 20)
             );
-            $html .= '<div class="woact-layout-row" style="' . $style . '"><div class="woact-layout-row__inner">';
+            $html .= '<div class="woact-layout-row" style="' . $style . '">';
+            $html .= $this->render_shape_divider((array) ($row['style']['shapeTop'] ?? []), 'top');
+            $html .= '<div class="woact-layout-row__inner">';
             foreach ((array) ($row['columns'] ?? []) as $column) {
                 $html .= '<div class="woact-layout-column" style="--woact-column:' . (int) ($column['width'] ?? 12) . '">';
                 foreach ((array) ($column['elements'] ?? []) as $element) {
@@ -394,7 +438,7 @@ final class Woact_Layouts
                 }
                 $html .= '</div>';
             }
-            $html .= '</div></div>';
+            $html .= '</div>' . $this->render_shape_divider((array) ($row['style']['shapeBottom'] ?? []), 'bottom') . '</div>';
         }
         return $html . '</' . $type . '>';
     }
@@ -617,7 +661,11 @@ final class Woact_Layouts
             'rows' => [[
                 'id' => $this->new_id('row'),
                 'columns' => [['id' => $this->new_id('column'), 'width' => 12, 'align' => $type === 'header' ? 'between' : 'center', 'elements' => []]],
-                'style' => ['width' => 'contained', 'minHeight' => $type === 'header' ? 72 : 110, 'gap' => 20, 'background' => '#ffffff', 'color' => '#17202a', 'sticky' => false, 'overlay' => false],
+                'style' => [
+                    'width' => 'contained', 'minHeight' => $type === 'header' ? 72 : 110, 'gap' => 20,
+                    'background' => '#ffffff', 'color' => '#17202a', 'sticky' => false, 'overlay' => false,
+                    'shapeTop' => $this->empty_shape(), 'shapeBottom' => $this->empty_shape(),
+                ],
                 'visibility' => ['desktop' => true, 'tablet' => true, 'mobile' => true],
             ]],
         ];
@@ -644,6 +692,66 @@ final class Woact_Layouts
         }
         $clean = sanitize_hex_color($value);
         return $clean ?: $fallback;
+    }
+
+    private function empty_shape(): array
+    {
+        return ['type' => 'none', 'color' => '#ffffff', 'height' => 40, 'flip' => false, 'invert' => false];
+    }
+
+    private function sanitize_shape(array $shape): array
+    {
+        $type = in_array(($shape['type'] ?? 'none'), self::SHAPE_TYPES, true) ? (string) $shape['type'] : 'none';
+        return [
+            'type' => $type,
+            'color' => $this->color((string) ($shape['color'] ?? '#ffffff'), '#ffffff'),
+            'height' => max(10, min(240, (int) ($shape['height'] ?? 40))),
+            'flip' => !empty($shape['flip']),
+            'invert' => !empty($shape['invert']),
+        ];
+    }
+
+    private function render_shape_divider(array $shape, string $position): string
+    {
+        $shape = $this->sanitize_shape($shape);
+        if ($shape['type'] === 'none') {
+            return '';
+        }
+        $paths = [
+            'wave' => ['M0 55 C180 110 360 5 600 55 C840 105 1020 15 1200 55 L1200 120 L0 120 Z'],
+            'wave-soft' => ['M0 45 C260 95 420 95 600 55 C810 8 1010 20 1200 72 L1200 120 L0 120 Z'],
+            'wave-double' => ['M0 42 C220 110 430 10 650 55 C860 98 1030 20 1200 48 L1200 120 L0 120 Z', 'M0 68 C250 18 440 104 680 62 C910 24 1040 82 1200 62 L1200 120 L0 120 Z'],
+            'wave-triple' => ['M0 38 C180 92 390 8 600 48 C820 90 1000 18 1200 50 L1200 120 L0 120 Z', 'M0 62 C220 18 420 105 650 62 C870 20 1030 86 1200 62 L1200 120 L0 120 Z', 'M0 82 C240 52 440 112 680 78 C920 48 1040 96 1200 82 L1200 120 L0 120 Z'],
+            'mountain' => ['M0 120 L600 8 L1200 120 Z'],
+            'mountains' => ['M0 120 L210 48 L360 90 L570 18 L760 86 L940 38 L1200 120 Z'],
+            'peaks' => ['M0 120 L150 25 L300 120 L450 18 L600 120 L750 30 L900 120 L1050 14 L1200 120 Z'],
+            'triangle' => ['M0 0 L600 120 L1200 0 L1200 120 L0 120 Z'],
+            'triangle-asym' => ['M0 10 L830 120 L1200 42 L1200 120 L0 120 Z'],
+            'curve' => ['M0 82 Q600 -15 1200 82 L1200 120 L0 120 Z'],
+            'curve-asym' => ['M0 96 Q340 8 1200 58 L1200 120 L0 120 Z'],
+            'tilt' => ['M0 92 L1200 12 L1200 120 L0 120 Z'],
+            'tilt-split' => ['M0 40 L600 96 L1200 28 L1200 120 L0 120 Z'],
+            'arrow' => ['M0 25 L600 105 L1200 25 L1200 120 L0 120 Z'],
+            'fan' => ['M0 120 L600 10 L420 120 Z M420 120 L600 10 L780 120 Z M780 120 L600 10 L1200 120 Z'],
+            'clouds' => ['M0 84 C35 40 90 45 120 78 C155 28 230 36 248 83 C305 50 360 60 380 92 C450 42 535 48 560 88 C620 35 700 44 720 86 C790 50 850 60 872 90 C935 32 1020 42 1040 84 C1100 52 1160 64 1200 92 L1200 120 L0 120 Z'],
+            'zigzag' => ['M0 70 L100 25 L200 70 L300 25 L400 70 L500 25 L600 70 L700 25 L800 70 L900 25 L1000 70 L1100 25 L1200 70 L1200 120 L0 120 Z'],
+            'steps' => ['M0 82 H200 V62 H400 V42 H600 V62 H800 V82 H1000 V62 H1200 V120 H0 Z'],
+            'pyramids' => ['M0 120 L150 42 L300 120 L450 42 L600 120 L750 42 L900 120 L1050 42 L1200 120 Z'],
+            'book' => ['M0 35 Q300 110 600 62 Q900 14 1200 35 L1200 120 L0 120 Z'],
+            'brush' => ['M0 64 L90 45 L180 70 L270 42 L360 72 L450 50 L540 78 L640 40 L735 68 L835 48 L940 74 L1040 44 L1200 65 L1200 120 L0 120 Z'],
+            'city' => ['M0 120 V70 H80 V42 H145 V82 H215 V30 H300 V68 H375 V50 H455 V88 H535 V26 H630 V70 H710 V44 H790 V82 H880 V34 H970 V72 H1060 V48 H1140 V84 H1200 V120 Z'],
+            'organic' => ['M0 72 C110 20 245 110 370 62 C510 8 590 108 735 60 C900 6 1040 112 1200 48 L1200 120 L0 120 Z'],
+            'droplets' => ['M0 48 Q80 100 160 48 T320 48 T480 48 T640 48 T800 48 T960 48 T1120 48 Q1160 72 1200 48 L1200 120 L0 120 Z'],
+            'torn' => ['M0 72 L70 55 L130 78 L210 48 L285 74 L360 52 L445 82 L525 46 L610 76 L700 50 L790 80 L870 48 L960 74 L1045 52 L1120 80 L1200 58 L1200 120 L0 120 Z'],
+        ];
+        $list = $paths[$shape['type']] ?? $paths['wave'];
+        $classes = 'woact-shape-divider is-' . $position . ($shape['flip'] ? ' is-flipped' : '') . ($shape['invert'] ? ' is-inverted' : '');
+        $svg = '<svg viewBox="0 0 1200 120" preserveAspectRatio="none" aria-hidden="true">';
+        foreach ($list as $index => $path) {
+            $opacity = count($list) > 1 ? ' opacity="' . esc_attr((string) (($index + 1) / count($list))) . '"' : '';
+            $svg .= '<path d="' . esc_attr($path) . '"' . $opacity . '></path>';
+        }
+        return '<div class="' . esc_attr($classes) . '" style="--woact-shape-height:' . (int) $shape['height'] . 'px;color:' . esc_attr($shape['color']) . '">' . $svg . '</div>';
     }
 
     private function clean_id(string $id): string

@@ -2,7 +2,7 @@
 Contributors: ostaddehdari
 Requires at least: 6.5
 Requires PHP: 7.4
-Stable tag: 0.3.0-rc1
+Stable tag: 0.3.1-rc1
 License: GPLv2 or later
 
 React-first WordPress theme with progressive compatibility for Elementor, Gutenberg, WooCommerce and classic plugin output.
