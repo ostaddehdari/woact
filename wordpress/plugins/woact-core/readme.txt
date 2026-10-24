@@ -2,7 +2,7 @@
 Contributors: ostaddehdari
 Requires at least: 6.5
 Requires PHP: 7.4
-Stable tag: 0.3.2-rc1
+Stable tag: 0.4.0-rc1
 License: GPLv2 or later
 
 Companion plugin for Woact. It owns the render policy, the first dashboard settings and the versioned bootstrap data contract.
@@ -19,4 +19,6 @@ The default is Hybrid. Existing pages keep their WordPress or builder output unt
 Stage 2 adds the React schema-driven dashboard, conditional fields, draft autosave, revisions, presets, import/export and grouped reset.
 
 Stage 3 adds versioned header/footer documents, a visual drag-and-drop React builder, responsive visibility, display conditions, draft/publish workflow, revisions and a shared frontend React renderer.
+
+Stage 4 adds the nested React page builder, shared live canvas/runtime, responsive inspector, dynamic data, JSON import/export, revisioned publishing and PHP fallback output.
 

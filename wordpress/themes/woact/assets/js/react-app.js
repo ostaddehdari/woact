@@ -129,7 +129,11 @@
     var route = data.route || {};
     var layouts = data.layouts || {};
     var Layout = window.WoactLayoutRenderer && window.WoactLayoutRenderer.Layout;
-    var view = route.kind === 'singular'
+    var Page = window.WoactPageRenderer && window.WoactPageRenderer.Page;
+    var dynamicData = { site: data.site || {}, post: data.content || {}, user: data.viewer || {} };
+    var view = Page && data.pageDocument
+      ? h(Page, { document: data.pageDocument, data: dynamicData, device: 'desktop' })
+      : route.kind === 'singular'
       ? h(SingularView, { content: data.content })
       : route.kind === 'not-found'
         ? h(NotFoundView)
@@ -142,7 +146,7 @@
       Layout && layouts.header
         ? h(Layout, { payload: layouts.header })
         : h(Header, { site: site, navigation: data.navigation || [] }),
-      h('main', { id: 'woact-main', className: 'woact-main woact-container' }, view),
+      h('main', { id: 'woact-main', className: 'woact-main' + (Page && data.pageDocument ? ' woact-page-main' : ' woact-container') }, view),
       (data.settings || {})['footer.enabled'] === false ? null : Layout && layouts.footer
         ? h(Layout, { payload: layouts.footer })
         : h(

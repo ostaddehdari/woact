@@ -6,6 +6,9 @@
  */
 
 get_header('react');
+$woact_page_fallback = is_page() && function_exists('woact_core_render_page_fallback')
+    ? woact_core_render_page_fallback((int) get_queried_object_id())
+    : '';
 ?>
 <div id="woact-root" data-woact-version="<?php echo esc_attr(WOACT_THEME_VERSION); ?>">
     <?php if (function_exists('woact_core_has_layout') && woact_core_has_layout('header')) : ?>
@@ -17,8 +20,10 @@ get_header('react');
         </div>
     </header>
     <?php endif; ?>
-    <main id="woact-main" class="woact-main woact-container" data-woact-fallback>
-        <?php if (is_404()) : ?>
+    <main id="woact-main" class="woact-main<?php echo $woact_page_fallback !== '' ? '' : ' woact-container'; ?>" data-woact-fallback>
+        <?php if ($woact_page_fallback !== '') : ?>
+            <?php echo $woact_page_fallback; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+        <?php elseif (is_404()) : ?>
             <section class="woact-empty">
                 <h1><?php esc_html_e('صفحه پیدا نشد', 'woact'); ?></h1>
             </section>

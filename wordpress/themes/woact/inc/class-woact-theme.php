@@ -71,7 +71,7 @@ final class Woact_Theme
         wp_enqueue_script(
             'woact-react-app',
             WOACT_THEME_URI . '/assets/js/react-app.js',
-            array_values(array_filter(['wp-element', 'wp-api-fetch', 'wp-i18n', wp_script_is('woact-layout-runtime', 'registered') ? 'woact-layout-runtime' : null])),
+            array_values(array_filter(['wp-element', 'wp-api-fetch', 'wp-i18n', wp_script_is('woact-layout-runtime', 'registered') ? 'woact-layout-runtime' : null, wp_script_is('woact-page-runtime', 'registered') ? 'woact-page-runtime' : null])),
             is_file($react_js) ? (string) filemtime($react_js) : WOACT_THEME_VERSION,
             true
         );

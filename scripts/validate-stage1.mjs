@@ -20,20 +20,26 @@ const required = [
   'wordpress/plugins/woact-core/assets/layout-runtime.js',
   'wordpress/plugins/woact-core/assets/layout-runtime.css',
   'wordpress/plugins/woact-core/examples/woact-ai-header-footer-example.json',
+  'wordpress/plugins/woact-core/includes/class-woact-pages.php',
+  'wordpress/plugins/woact-core/includes/class-woact-pages-rest-controller.php',
+  'wordpress/plugins/woact-core/assets/admin-page-builder.js',
+  'wordpress/plugins/woact-core/assets/admin-page-builder.css',
+  'wordpress/plugins/woact-core/assets/page-runtime.js',
+  'wordpress/plugins/woact-core/assets/page-runtime.css',
 ];
 
 const missing = required.filter((path) => !existsSync(path));
 if (missing.length) {
-  throw new Error(`Stage 3 files missing:\n${missing.join('\n')}`);
+  throw new Error(`Stage 4 files missing:\n${missing.join('\n')}`);
 }
 
 const theme = readFileSync('wordpress/themes/woact/style.css', 'utf8');
 const plugin = readFileSync('wordpress/plugins/woact-core/woact-core.php', 'utf8');
 for (const [name, source] of [['theme', theme], ['plugin', plugin]]) {
-  if (!source.includes('0.3.2-rc1')) {
-    throw new Error(`${name} version is not 0.3.2-rc1`);
+  if (!source.includes('0.4.0-rc1')) {
+    throw new Error(`${name} version is not 0.4.0-rc1`);
   }
 }
 
-console.log('Woact Stage 3 structure is valid.');
+console.log('Woact Stage 4 structure is valid.');
 
