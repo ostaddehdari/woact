@@ -3,7 +3,7 @@ set -Eeuo pipefail
 
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 build_dir="$project_root/build"
-version="0.5.2-rc1"
+version="0.5.3-rc1"
 
 rm -rf "$build_dir"
 mkdir -p "$build_dir/package/wp-content/themes" "$build_dir/package/wp-content/plugins"

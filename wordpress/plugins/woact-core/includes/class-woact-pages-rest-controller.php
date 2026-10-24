@@ -65,10 +65,11 @@ final class Woact_Pages_REST_Controller
     }
     private function expose(array $page): array
     {
+        $revisions = array_values(array_filter((array) ($page['revisions'] ?? []), 'is_array'));
         $page['revisions'] = array_map(static function (array $revision): array {
             $user = get_userdata((int) ($revision['userId'] ?? 0));
             return ['id' => (string) ($revision['id'] ?? ''), 'createdAt' => (int) ($revision['createdAt'] ?? 0), 'user' => $user ? $user->display_name : '—'];
-        }, (array) ($page['revisions'] ?? []));
+        }, $revisions);
         return $page;
     }
 }

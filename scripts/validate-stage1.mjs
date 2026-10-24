@@ -40,8 +40,8 @@ if (missing.length) {
 const theme = readFileSync('wordpress/themes/woact/style.css', 'utf8');
 const plugin = readFileSync('wordpress/plugins/woact-core/woact-core.php', 'utf8');
 for (const [name, source] of [['theme', theme], ['plugin', plugin]]) {
-  if (!source.includes('0.5.2-rc1')) {
-    throw new Error(`${name} version is not 0.5.2-rc1`);
+  if (!source.includes('0.5.3-rc1')) {
+    throw new Error(`${name} version is not 0.5.3-rc1`);
   }
 }
 

@@ -112,13 +112,15 @@ final class Woact_Pages
         }
         $draft = get_post_meta($post_id, self::META_DRAFT, true);
         $published = get_post_meta($post_id, self::META_PUBLISHED, true);
+        $revisions = get_post_meta($post_id, self::META_REVISIONS, true);
         $draft = is_array($draft) ? $this->sanitize_document($draft) : $this->blank_document();
         $published = is_array($published) ? $this->sanitize_document($published) : null;
+        $revisions = is_array($revisions) ? array_values(array_filter($revisions, 'is_array')) : [];
         return [
             'id' => $post_id, 'postType' => $post->post_type, 'title' => $post->post_title, 'status' => $post->post_status,
             'enabled' => get_post_meta($post_id, self::META_ENABLED, true) === '1',
             'draft' => $draft, 'published' => $published,
-            'revisions' => array_values((array) get_post_meta($post_id, self::META_REVISIONS, true)),
+            'revisions' => $revisions,
             'revision' => $this->revision_token($post_id, $draft),
             'viewUrl' => get_permalink($post_id),
         ];

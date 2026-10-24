@@ -9,6 +9,8 @@ const editor = readFileSync('wordpress/plugins/woact-core/assets/admin-page-buil
 const aiExample = JSON.parse(readFileSync('wordpress/plugins/woact-core/examples/woact-ai-page-example.json', 'utf8'));
 const layoutEditor = readFileSync('wordpress/plugins/woact-core/assets/admin-layout-builder.js', 'utf8');
 const phpCore = readFileSync('wordpress/plugins/woact-core/includes/class-woact-core.php', 'utf8');
+const pagesPhp = readFileSync('wordpress/plugins/woact-core/includes/class-woact-pages.php', 'utf8');
+const pagesRestPhp = readFileSync('wordpress/plugins/woact-core/includes/class-woact-pages-rest-controller.php', 'utf8');
 
 test('widget SDK exposes registration and extension hooks', () => {
   assert.match(core, /function woact_register_widget/);
@@ -45,4 +47,9 @@ test('WordPress posts open directly in Woact and layouts have a library', () => 
   assert.doesNotMatch(editor, /ساخت اولین صفحه/);
   assert.match(layoutEditor, /woact-layout-library/);
   assert.match(layoutEditor, /JSON کامل برای هوش مصنوعی/);
+});
+
+test('legacy WordPress content with empty Woact revision meta is safe', () => {
+  assert.match(pagesPhp, /is_array\(\$revisions\).*array_filter\(\$revisions, 'is_array'\)/s);
+  assert.match(pagesRestPhp, /array_filter\(\(array\).*'is_array'\)/s);
 });
