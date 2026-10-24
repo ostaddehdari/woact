@@ -16,6 +16,7 @@ final class Woact_Core
     private Woact_Layouts_REST_Controller $layouts_controller;
     private Woact_Pages $pages;
     private Woact_Pages_REST_Controller $pages_controller;
+    private Woact_Widget_Registry $widgets;
 
     private function __construct()
     {
@@ -24,7 +25,9 @@ final class Woact_Core
         $this->settings_controller = new Woact_Settings_REST_Controller($this->settings);
         $this->layouts = new Woact_Layouts();
         $this->layouts_controller = new Woact_Layouts_REST_Controller($this->layouts);
-        $this->pages = new Woact_Pages();
+        $this->widgets = new Woact_Widget_Registry();
+        $this->widgets->boot();
+        $this->pages = new Woact_Pages($this->widgets);
         $this->pages_controller = new Woact_Pages_REST_Controller($this->pages);
     }
 
@@ -76,6 +79,11 @@ final class Woact_Core
     public function get_settings(): array
     {
         return $this->settings->get_values();
+    }
+
+    public function get_widget_registry(): Woact_Widget_Registry
+    {
+        return $this->widgets;
     }
 
     public function register_admin_page(): void
@@ -148,6 +156,12 @@ final class Woact_Core
                 'nonce' => wp_create_nonce('wp_rest'), 'version' => WOACT_CORE_VERSION,
                 'site' => ['name' => get_bloginfo('name'), 'description' => get_bloginfo('description')],
                 'user' => ['name' => $user->display_name],
+                'widgetData' => [
+                    'posts' => [['id' => 1, 'title' => 'نمونه نوشته', 'url' => '#', 'excerpt' => 'خلاصه‌ای برای پیش‌نمایش زنده صفحه‌ساز.', 'image' => '']],
+                    'commerce' => ['available' => class_exists('WooCommerce'), 'products' => [['id' => 1, 'title' => 'محصول نمونه', 'url' => '#', 'priceHtml' => '۱٬۲۵۰٬۰۰۰ تومان', 'image' => '', 'rating' => 4.5, 'stock' => 'instock', 'addToCartUrl' => '#']], 'categories' => [], 'cartCount' => 0, 'cartUrl' => '#', 'checkoutUrl' => '#'],
+                    'product' => ['available' => class_exists('WooCommerce'), 'title' => 'محصول نمونه', 'priceHtml' => '۱٬۲۵۰٬۰۰۰ تومان', 'rating' => 4.5, 'stock' => 'instock', 'image' => '', 'gallery' => [], 'addToCartUrl' => '#'],
+                    'account' => ['loggedIn' => is_user_logged_in(), 'name' => $user->display_name, 'loginUrl' => wp_login_url(), 'accountUrl' => '#'],
+                ],
             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ';', 'before');
             return;
         }
@@ -352,6 +366,10 @@ final class Woact_Core
             'pageDocument' => is_singular('page') ? $this->pages->get_runtime_document((int) get_queried_object_id()) : null,
         ];
 
+        if (is_array($data['pageDocument'])) {
+            $data['widgetData'] = $this->widgets->runtime_data($data['pageDocument'], (int) get_queried_object_id());
+        }
+
         if (is_user_logged_in()) {
             $user = wp_get_current_user();
             $data['viewer'] = [
@@ -522,6 +540,7 @@ final class Woact_Core
             'site' => ['name' => get_bloginfo('name'), 'description' => get_bloginfo('description')],
             'post' => $content,
             'user' => is_user_logged_in() ? ['name' => wp_get_current_user()->display_name] : ['name' => ''],
+            'widgets' => $this->widgets->runtime_data($document, $post_id),
         ]);
     }
 

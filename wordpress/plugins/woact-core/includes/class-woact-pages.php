@@ -15,11 +15,17 @@ final class Woact_Pages
     public const META_ENABLED = '_woact_page_enabled';
     private const NODE_TYPES = ['section', 'container', 'columns', 'column', 'heading', 'text', 'button', 'image', 'icon', 'list', 'quote', 'divider', 'spacer', 'html'];
     private const CONTAINERS = ['section', 'container', 'columns', 'column'];
+    private ?Woact_Widget_Registry $widgets;
+
+    public function __construct(?Woact_Widget_Registry $widgets = null)
+    {
+        $this->widgets = $widgets;
+    }
 
     public function get_manifest(): array
     {
         $field = static fn(string $id, string $label, string $type = 'text', $default = ''): array => compact('id', 'label', 'type', 'default');
-        return [
+        $manifest = [
             'schemaVersion' => self::SCHEMA_VERSION,
             'categories' => [
                 ['id' => 'layout', 'label' => 'چیدمان'],
@@ -53,6 +59,11 @@ final class Woact_Pages
                 ['value' => 'user.name', 'label' => 'نام کاربر'],
             ],
         ];
+        if ($this->widgets) {
+            $manifest['categories'] = array_merge($manifest['categories'], $this->widgets->categories());
+            $manifest['components'] = array_merge($manifest['components'], $this->widgets->definitions());
+        }
+        return $manifest;
     }
 
     public function list_pages(): array
@@ -255,7 +266,7 @@ final class Woact_Pages
 
     private function sanitize_node($node, int $depth): ?array
     {
-        if (!is_array($node) || $depth > 8 || !in_array(($node['type'] ?? ''), self::NODE_TYPES, true)) {
+        if (!is_array($node) || $depth > 8 || !$this->is_allowed_type((string) ($node['type'] ?? ''))) {
             return null;
         }
         $type = (string) $node['type'];
@@ -362,6 +373,11 @@ final class Woact_Pages
     {
         $id = preg_replace('/[^a-zA-Z0-9_-]/', '', $id) ?: '';
         return $id ?: $this->new_id('node');
+    }
+
+    private function is_allowed_type(string $type): bool
+    {
+        return in_array($type, self::NODE_TYPES, true) || ($this->widgets && $this->widgets->has($type));
     }
 
     private function new_id(string $prefix): string

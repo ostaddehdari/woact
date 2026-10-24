@@ -130,7 +130,7 @@
     var layouts = data.layouts || {};
     var Layout = window.WoactLayoutRenderer && window.WoactLayoutRenderer.Layout;
     var Page = window.WoactPageRenderer && window.WoactPageRenderer.Page;
-    var dynamicData = { site: data.site || {}, post: data.content || {}, user: data.viewer || {} };
+    var dynamicData = { site: data.site || {}, post: data.content || {}, user: data.viewer || {}, widgets: data.widgetData || {} };
     var view = Page && data.pageDocument
       ? h(Page, { document: data.pageDocument, data: dynamicData, device: 'desktop' })
       : route.kind === 'singular'
