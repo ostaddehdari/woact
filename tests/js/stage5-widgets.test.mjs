@@ -41,6 +41,8 @@ test('WordPress posts open directly in Woact and layouts have a library', () => 
   assert.match(phpCore, /ویرایش با Woact/);
   assert.match(phpCore, /page_row_actions/);
   assert.match(editor, /initialPostId/);
+  assert.match(editor, /if \(requested\) load\(requested\)/);
+  assert.doesNotMatch(editor, /ساخت اولین صفحه/);
   assert.match(layoutEditor, /woact-layout-library/);
   assert.match(layoutEditor, /JSON کامل برای هوش مصنوعی/);
 });
