@@ -62,6 +62,10 @@ final class Woact_Core
         load_plugin_textdomain('woact-core', false, dirname(plugin_basename(WOACT_CORE_FILE)) . '/languages');
         add_action('admin_menu', [$this, 'register_admin_page']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_assets']);
+        add_action('edit_form_after_title', [$this, 'render_edit_with_woact_button']);
+        add_filter('page_row_actions', [$this, 'add_woact_row_action'], 10, 2);
+        add_filter('post_row_actions', [$this, 'add_woact_row_action'], 10, 2);
+        add_action('admin_bar_menu', [$this, 'add_woact_admin_bar_action'], 85);
         add_action('add_meta_boxes', [$this, 'register_render_meta_box']);
         add_action('save_post', [$this, 'save_render_meta_box']);
         add_action('rest_api_init', [$this, 'register_rest_routes']);
@@ -118,13 +122,41 @@ final class Woact_Core
             [$this, 'render_layouts_page']
         );
         add_submenu_page(
-            'woact',
-            __('صفحه‌ساز React', 'woact-core'),
-            __('صفحه‌ساز React', 'woact-core'),
-            'edit_pages',
-            'woact-pages',
+            null,
+            __('ویرایش با Woact', 'woact-core'),
+            __('ویرایش با Woact', 'woact-core'),
+            'read',
+            'woact-edit',
             [$this, 'render_pages_page']
         );
+    }
+
+    private function get_woact_edit_url(int $post_id): string
+    {
+        return add_query_arg(['page' => 'woact-edit', 'post' => $post_id], admin_url('admin.php'));
+    }
+
+    public function add_woact_row_action(array $actions, WP_Post $post): array
+    {
+        if (in_array($post->post_type, ['post', 'page'], true) && current_user_can('edit_post', $post->ID)) {
+            $actions['woact'] = '<a href="' . esc_url($this->get_woact_edit_url((int) $post->ID)) . '">' . esc_html__('ویرایش با Woact', 'woact-core') . '</a>';
+        }
+        return $actions;
+    }
+
+    public function render_edit_with_woact_button(WP_Post $post): void
+    {
+        if (!in_array($post->post_type, ['post', 'page'], true) || !current_user_can('edit_post', $post->ID)) return;
+        echo '<div class="woact-edit-entry"><a class="button button-primary button-large" href="' . esc_url($this->get_woact_edit_url((int) $post->ID)) . '"><span class="dashicons dashicons-layout" style="vertical-align:middle;margin:3px 0 0 6px"></span>' . esc_html__('ویرایش با Woact', 'woact-core') . '</a></div>';
+    }
+
+    public function add_woact_admin_bar_action(WP_Admin_Bar $bar): void
+    {
+        if (!is_admin()) return;
+        $post_id = isset($_GET['post']) ? absint($_GET['post']) : 0;
+        $post = $post_id ? get_post($post_id) : null;
+        if (!$post instanceof WP_Post || !in_array($post->post_type, ['post', 'page'], true) || !current_user_can('edit_post', $post_id)) return;
+        $bar->add_node(['id' => 'woact-edit', 'title' => __('ویرایش با Woact', 'woact-core'), 'href' => $this->get_woact_edit_url($post_id), 'meta' => ['class' => 'woact-admin-bar-edit']]);
     }
 
     public function enqueue_admin_assets(string $hook): void
@@ -143,7 +175,7 @@ final class Woact_Core
             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ';', 'before');
             return;
         }
-        if ($hook === 'woact_page_woact-pages') {
+        if ($hook === 'admin_page_woact-edit') {
             wp_enqueue_media();
             $css_file = WOACT_CORE_DIR . 'assets/admin-page-builder.css';
             $js_file = WOACT_CORE_DIR . 'assets/admin-page-builder.js';
@@ -154,6 +186,7 @@ final class Woact_Core
             $user = wp_get_current_user();
             wp_add_inline_script('woact-admin-page-builder', 'window.WoactPageBuilderConfig=' . wp_json_encode([
                 'nonce' => wp_create_nonce('wp_rest'), 'version' => WOACT_CORE_VERSION,
+                'initialPostId' => isset($_GET['post']) ? absint($_GET['post']) : 0,
                 'site' => ['name' => get_bloginfo('name'), 'description' => get_bloginfo('description')],
                 'user' => ['name' => $user->display_name],
                 'widgetData' => [
@@ -178,6 +211,10 @@ final class Woact_Core
         wp_add_inline_script('woact-admin-layout-builder', 'window.WoactBuilderConfig=' . wp_json_encode([
             'nonce' => wp_create_nonce('wp_rest'),
             'version' => WOACT_CORE_VERSION,
+            'mode' => isset($_GET['action']) && sanitize_key(wp_unslash($_GET['action'])) === 'edit' ? 'editor' : 'list',
+            'templateId' => isset($_GET['id']) ? sanitize_key(wp_unslash($_GET['id'])) : '',
+            'listUrl' => admin_url('admin.php?page=woact-layouts'),
+            'editorUrl' => admin_url('admin.php?page=woact-layouts&action=edit&id='),
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ';', 'before');
     }
 
@@ -211,7 +248,10 @@ final class Woact_Core
 
     public function render_pages_page(): void
     {
-        if (!current_user_can('edit_pages')) return;
+        $post_id = isset($_GET['post']) ? absint($_GET['post']) : 0;
+        if (!$post_id || !current_user_can('edit_post', $post_id)) {
+            wp_die(esc_html__('اجازهٔ ویرایش این محتوا را ندارید.', 'woact-core'), '', ['response' => 403]);
+        }
         echo '<div class="wrap woact-page-builder-wrap" dir="rtl"><div id="woact-page-builder-root">';
         echo '<div class="woact-page-loading">' . esc_html__('در حال بارگذاری صفحه‌ساز React…', 'woact-core') . '</div>';
         echo '</div><noscript>' . esc_html__('برای استفاده از صفحه‌ساز، JavaScript را فعال کنید.', 'woact-core') . '</noscript></div>';
@@ -363,7 +403,7 @@ final class Woact_Core
                 'header' => $this->layouts->get_runtime_payload('header'),
                 'footer' => $this->layouts->get_runtime_payload('footer'),
             ],
-            'pageDocument' => is_singular('page') ? $this->pages->get_runtime_document((int) get_queried_object_id()) : null,
+            'pageDocument' => is_singular(['page', 'post']) ? $this->pages->get_runtime_document((int) get_queried_object_id()) : null,
         ];
 
         if (is_array($data['pageDocument'])) {
@@ -558,7 +598,7 @@ final class Woact_Core
     {
         $header = $this->layouts->get_runtime_payload('header');
         $footer = $this->layouts->get_runtime_payload('footer');
-        $page_document = is_singular('page') ? $this->pages->get_runtime_document((int) get_queried_object_id()) : null;
+        $page_document = is_singular(['page', 'post']) ? $this->pages->get_runtime_document((int) get_queried_object_id()) : null;
         if (!$header && !$footer && !$page_document) {
             return;
         }

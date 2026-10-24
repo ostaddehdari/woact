@@ -69,13 +69,14 @@ final class Woact_Pages
     public function list_pages(): array
     {
         $query = new WP_Query([
-            'post_type' => 'page', 'post_status' => ['publish', 'draft', 'private'], 'posts_per_page' => 200,
+            'post_type' => ['page', 'post'], 'post_status' => ['publish', 'draft', 'private'], 'posts_per_page' => 200,
             'orderby' => 'modified', 'order' => 'DESC', 'no_found_rows' => true,
         ]);
+        $editable = array_values(array_filter($query->posts, static fn(WP_Post $post): bool => current_user_can('edit_post', $post->ID)));
         return array_map(function (WP_Post $post): array {
             $draft = get_post_meta($post->ID, self::META_DRAFT, true);
             return [
-                'id' => (int) $post->ID,
+                'id' => (int) $post->ID, 'postType' => $post->post_type,
                 'title' => $post->post_title,
                 'status' => $post->post_status,
                 'enabled' => get_post_meta($post->ID, self::META_ENABLED, true) === '1',
@@ -83,13 +84,14 @@ final class Woact_Pages
                 'editUrl' => get_edit_post_link($post->ID, 'raw'),
                 'viewUrl' => get_permalink($post->ID),
             ];
-        }, $query->posts);
+        }, $editable);
     }
 
-    public function create(string $title, int $user_id)
+    public function create(string $title, int $user_id, string $post_type = 'page')
     {
+        $post_type = in_array($post_type, ['post', 'page'], true) ? $post_type : 'page';
         $post_id = wp_insert_post([
-            'post_type' => 'page', 'post_status' => 'draft', 'post_title' => sanitize_text_field($title ?: 'صفحه React جدید'),
+            'post_type' => $post_type, 'post_status' => 'draft', 'post_title' => sanitize_text_field($title ?: 'محتوای React جدید'),
             'post_author' => $user_id,
         ], true);
         if (is_wp_error($post_id)) {
@@ -105,7 +107,7 @@ final class Woact_Pages
     public function get(int $post_id): ?array
     {
         $post = get_post($post_id);
-        if (!$post instanceof WP_Post || $post->post_type !== 'page') {
+        if (!$post instanceof WP_Post || !in_array($post->post_type, ['page', 'post'], true)) {
             return null;
         }
         $draft = get_post_meta($post_id, self::META_DRAFT, true);
@@ -113,7 +115,7 @@ final class Woact_Pages
         $draft = is_array($draft) ? $this->sanitize_document($draft) : $this->blank_document();
         $published = is_array($published) ? $this->sanitize_document($published) : null;
         return [
-            'id' => $post_id, 'title' => $post->post_title, 'status' => $post->post_status,
+            'id' => $post_id, 'postType' => $post->post_type, 'title' => $post->post_title, 'status' => $post->post_status,
             'enabled' => get_post_meta($post_id, self::META_ENABLED, true) === '1',
             'draft' => $draft, 'published' => $published,
             'revisions' => array_values((array) get_post_meta($post_id, self::META_REVISIONS, true)),

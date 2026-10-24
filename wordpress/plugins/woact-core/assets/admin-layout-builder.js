@@ -262,6 +262,23 @@
     ));
   }
 
+  function LayoutList(props) {
+    var _query = useState(''), query = _query[0], setQuery = _query[1];
+    var _type = useState('all'), type = _type[0], setType = _type[1];
+    var _status = useState('all'), status = _status[0], setStatus = _status[1];
+    var _sort = useState('modified'), sort = _sort[0], setSort = _sort[1];
+    var templates = (props.templates || []).filter(function (item) {
+      return (type === 'all' || item.type === type) && (status === 'all' || (status === 'active' ? item.active : !item.active)) && (!query || String(item.title || '').toLowerCase().indexOf(query.toLowerCase()) !== -1);
+    }).slice().sort(function (a, b) { return sort === 'title' ? String(a.title).localeCompare(String(b.title), 'fa') : Number(b.updatedAt || b.modifiedAt || 0) - Number(a.updatedAt || a.modifiedAt || 0); });
+    return h('div', { className: 'woact-layout-library', dir: 'rtl' },
+      h('header', { className: 'woact-layout-library__header' }, h('div', null, h('h1', null, 'هدر و فوترهای Woact'), h('p', null, 'قالب‌ها را جست‌وجو، فیلتر و مدیریت کنید؛ سپس وارد ویرایشگر زنده شوید.')), h('div', null, h('button', { className: 'button button-primary', onClick: function () { props.create('header'); } }, '+ هدر جدید'), h('button', { className: 'button', onClick: function () { props.create('footer'); } }, '+ فوتر جدید'))),
+      h('div', { className: 'woact-layout-library__ai' }, h('strong', null, 'طراحی با هوش مصنوعی'), h('span', null, 'قرارداد کامل، همه المان‌ها، تنظیمات و SVGها را دریافت کنید.'), h('button', { className: 'button', onClick: props.aiJson }, 'JSON کامل برای هوش مصنوعی'), h('a', { className: 'button', href: props.sampleUrl, download: 'woact-ai-header-footer-example.json' }, 'JSON نمونه'), h('button', { className: 'button', onClick: props.importClick }, 'درون‌ریزی JSON')),
+      h('div', { className: 'woact-layout-library__filters' }, h('input', { type: 'search', value: query, placeholder: 'جست‌وجوی عنوان…', onChange: function (event) { setQuery(event.target.value); } }), h('select', { value: type, onChange: function (event) { setType(event.target.value); } }, h('option', { value: 'all' }, 'همه نوع‌ها'), h('option', { value: 'header' }, 'هدرها'), h('option', { value: 'footer' }, 'فوترها')), h('select', { value: status, onChange: function (event) { setStatus(event.target.value); } }, h('option', { value: 'all' }, 'همه وضعیت‌ها'), h('option', { value: 'active' }, 'فعال'), h('option', { value: 'inactive' }, 'غیرفعال')), h('select', { value: sort, onChange: function (event) { setSort(event.target.value); } }, h('option', { value: 'modified' }, 'آخرین ویرایش'), h('option', { value: 'title' }, 'عنوان'))),
+      templates.length ? h('div', { className: 'woact-layout-library__table' }, h('table', { className: 'widefat striped' }, h('thead', null, h('tr', null, h('th', null, 'عنوان'), h('th', null, 'نوع'), h('th', null, 'وضعیت'), h('th', null, 'اولویت'), h('th', null, 'عملیات'))), h('tbody', null, templates.map(function (item) { return h('tr', { key: item.id }, h('td', null, h('strong', null, item.title)), h('td', null, item.type === 'header' ? 'هدر' : 'فوتر'), h('td', null, h('span', { className: item.active ? 'woact-status-active' : 'woact-status-draft' }, item.active ? 'فعال' : 'غیرفعال')), h('td', null, item.priority), h('td', null, h('a', { className: 'button button-primary', href: config.editorUrl + encodeURIComponent(item.id) }, 'ویرایش با Woact'))); })))) : h('div', { className: 'woact-layout-library__empty' }, 'قالبی با این فیلتر پیدا نشد.'),
+      h('input', { type: 'file', hidden: true, ref: props.importRef, accept: '.json,application/json', onChange: props.importTemplate })
+    );
+  }
+
   function App() {
     var _payload = useState(null), payload = _payload[0], setPayload = _payload[1];
     var _active = useState(''), active = _active[0], setActive = _active[1];
@@ -281,7 +298,7 @@
     useEffect(function () {
       apiFetch({ path: '/woact/v1/admin/layouts' }).then(function (data) {
         setPayload(data);
-        if (data.templates && data.templates[0]) loadTemplate(data.templates[0]);
+        if (config.mode === 'editor') { var requested = (data.templates || []).find(function (item) { return item.id === config.templateId; }); if (requested) loadTemplate(requested); }
       }).catch(function (error) { setNotice({ type: 'error', message: error.message || 'بارگذاری سازنده ناموفق بود.' }); });
     }, []);
 
@@ -327,7 +344,7 @@
       saveDraft(true).then(function (template) { return apiFetch({ path: '/woact/v1/admin/layouts/' + template.id + '/publish', method: 'POST' }); }).then(function (data) { replaceTemplate(data); setNotice({ type: 'success', message: 'قالب منتشر شد و اکنون در سایت فعال است.' }); });
     }
     function create(type) {
-      apiFetch({ path: '/woact/v1/admin/layouts', method: 'POST', data: { type: type, title: type === 'header' ? 'هدر جدید' : 'فوتر جدید' } }).then(function (data) { setPayload(function (current) { return Object.assign({}, current, { templates: current.templates.concat([data]) }); }); loadTemplate(data); });
+      apiFetch({ path: '/woact/v1/admin/layouts', method: 'POST', data: { type: type, title: type === 'header' ? 'هدر جدید' : 'فوتر جدید' } }).then(function (data) { if (config.mode === 'list') { window.location.href = config.editorUrl + encodeURIComponent(data.id); return; } setPayload(function (current) { return Object.assign({}, current, { templates: current.templates.concat([data]) }); }); loadTemplate(data); });
     }
     function duplicate() { apiFetch({ path: '/woact/v1/admin/layouts/' + working.id + '/duplicate', method: 'POST' }).then(function (data) { setPayload(function (current) { return Object.assign({}, current, { templates: current.templates.concat([data]) }); }); loadTemplate(data); }); }
     function removeTemplate() {
@@ -346,6 +363,10 @@
       var prompt = 'یک فایل JSON معتبر برای Woact Layout Bundle با schemaVersion برابر 2 بساز. خروجی فقط JSON باشد و شامل آرایه templates با دقیقاً یک header و یک footer باشد. هر template شامل type، title، priority، conditions و document است. فقط از element typeهای زیر استفاده کن: ' + payload.manifest.elements.map(function (item) { return item.type; }).join(', ') + '. فقط از shape typeهای زیر استفاده کن: ' + payload.manifest.shapes.map(function (item) { return item.value; }).join(', ') + '. ساختار دقیق را از فایل نمونه‌ای که همراه این پیام می‌فرستم حفظ کن؛ شناسه‌ها یکتا و انگلیسی باشند.';
       if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(prompt).then(function () { setNotice({ type: 'success', message: 'پرامپت هوش مصنوعی کپی شد.' }); });
       else window.prompt('این متن را کپی کنید:', prompt);
+    }
+    function exportAiJson() {
+      var doc = { product: 'woact-layout-ai-request', schemaVersion: payload.schemaVersion, version: payload.version, language: 'fa-IR', direction: 'rtl', aiInstructions: ['یک هدر یا فوتر حرفه‌ای و واکنش‌گرا طراحی کن.', 'خروجی فقط JSON معتبر و بدون Markdown باشد.', 'فقط از elementها و shapeهای manifest استفاده کن.', 'شناسه‌ها یکتا و انگلیسی باشند.', 'خروجی نهایی باید product برابر woact-layout و دارای template یا templates باشد.'], outputContract: { product: 'woact-layout', schemaVersion: payload.schemaVersion, version: payload.version, templates: [{ type: 'header', title: 'هدر ساخته‌شده با AI', priority: 10, conditions: [{ scope: 'entire_site', value: '', exclude: false }], document: { schemaVersion: payload.schemaVersion, settings: { sticky: false, shrinkOnScroll: false }, rows: [] } }] }, manifest: payload.manifest, currentTemplates: payload.templates.map(function (item) { return { type: item.type, title: item.title, priority: item.priority, conditions: item.conditions, document: item.draft }; }) };
+      var content = JSON.stringify(doc, null, 2); var url = URL.createObjectURL(new Blob([content], { type: 'application/json' })); var link = document.createElement('a'); link.href = url; link.download = 'woact-ai-layout-request.json'; link.click(); URL.revokeObjectURL(url); if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(content); setNotice({ type: 'success', message: 'JSON کامل هوش مصنوعی دانلود و کپی شد.' });
     }
     function openPreview() { saveDraft(true).then(function (template) { setPreview(payload.previewUrl + '&id=' + encodeURIComponent(template.id) + '&t=' + Date.now()); }); }
     function restore(revisionId) { if (!window.confirm('نسخه انتخاب‌شده بازگردانی شود؟')) return; apiFetch({ path: '/woact/v1/admin/layouts/' + working.id + '/restore', method: 'POST', data: { revisionId: revisionId } }).then(function (data) { replaceTemplate(data); setHistory(false); setNotice({ type: 'success', message: 'نسخه بازگردانی شد.' }); }); }
@@ -377,6 +398,7 @@
 
     var definitions = useMemo(function () { var out = {}; if (payload) payload.manifest.elements.forEach(function (item) { out[item.type] = item; }); return out; }, [payload]);
     if (!payload) return h('div', { className: 'woact-builder-loading' }, h('span', { className: 'spinner is-active' }), h('p', null, 'در حال بارگذاری…'));
+    if (config.mode === 'list') return h(Fragment, null, h(Notice, { value: notice, close: function () { setNotice(null); } }), h(LayoutList, { templates: payload.templates, create: create, aiJson: exportAiJson, sampleUrl: payload.sampleUrl, importRef: importRef, importClick: function () { importRef.current.click(); }, importTemplate: importTemplate }));
     if (!working) return h('div', { className: 'woact-builder-empty' }, h('h1', null, 'هدر و فوتر ساز Woact'), h('button', { className: 'button button-primary', onClick: function () { create('header'); } }, 'ساخت هدر'), h('button', { className: 'button', onClick: function () { create('footer'); } }, 'ساخت فوتر'));
 
     return h(Fragment, null,
@@ -403,7 +425,9 @@
         ),
         h('footer', { className: 'woact-builder-footerbar' },
           h('button', { type: 'button', onClick: duplicate }, 'تکثیر قالب'),
+          h('a', { className: 'woact-builder-download', href: config.listUrl }, 'بازگشت به فهرست'),
           h('button', { type: 'button', onClick: exportTemplate }, 'خروجی JSON'),
+          h('button', { type: 'button', onClick: exportAiJson }, 'JSON کامل برای هوش مصنوعی'),
           h('a', { className: 'woact-builder-download', href: payload.sampleUrl, download: 'woact-ai-header-footer-example.json' }, 'نمونه JSON هوش مصنوعی'),
           h('button', { type: 'button', onClick: copyAiPrompt }, 'کپی پرامپت AI'),
           h('button', { type: 'button', onClick: function () { importRef.current.click(); } }, 'درون‌ریزی'),

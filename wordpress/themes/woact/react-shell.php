@@ -6,7 +6,7 @@
  */
 
 get_header('react');
-$woact_page_fallback = is_page() && function_exists('woact_core_render_page_fallback')
+$woact_page_fallback = is_singular(['page', 'post']) && function_exists('woact_core_render_page_fallback')
     ? woact_core_render_page_fallback((int) get_queried_object_id())
     : '';
 ?>

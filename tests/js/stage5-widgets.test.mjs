@@ -7,6 +7,8 @@ const runtime = readFileSync('wordpress/plugins/woact-core/assets/page-runtime.j
 const core = readFileSync('wordpress/plugins/woact-core/woact-core.php', 'utf8');
 const editor = readFileSync('wordpress/plugins/woact-core/assets/admin-page-builder.js', 'utf8');
 const aiExample = JSON.parse(readFileSync('wordpress/plugins/woact-core/examples/woact-ai-page-example.json', 'utf8'));
+const layoutEditor = readFileSync('wordpress/plugins/woact-core/assets/admin-layout-builder.js', 'utf8');
+const phpCore = readFileSync('wordpress/plugins/woact-core/includes/class-woact-core.php', 'utf8');
 
 test('widget SDK exposes registration and extension hooks', () => {
   assert.match(core, /function woact_register_widget/);
@@ -33,4 +35,12 @@ test('AI page contract can be exported and the example is importable', () => {
   assert.equal(aiExample.product, 'woact-page');
   assert.equal(aiExample.schemaVersion, 1);
   assert.ok(aiExample.document.nodes.length >= 4);
+});
+
+test('WordPress posts open directly in Woact and layouts have a library', () => {
+  assert.match(phpCore, /ویرایش با Woact/);
+  assert.match(phpCore, /page_row_actions/);
+  assert.match(editor, /initialPostId/);
+  assert.match(layoutEditor, /woact-layout-library/);
+  assert.match(layoutEditor, /JSON کامل برای هوش مصنوعی/);
 });

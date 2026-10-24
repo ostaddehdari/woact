@@ -7,7 +7,11 @@ final class Woact_Pages_REST_Controller
 {
     private Woact_Pages $pages;
     public function __construct(Woact_Pages $pages) { $this->pages = $pages; }
-    public function permissions_check(): bool { return current_user_can('edit_pages'); }
+    public function permissions_check(WP_REST_Request $request): bool
+    {
+        $id = (int) ($request['id'] ?? 0);
+        return $id ? current_user_can('edit_post', $id) : (current_user_can('edit_posts') || current_user_can('edit_pages'));
+    }
 
     public function register_routes(): void
     {
@@ -34,7 +38,7 @@ final class Woact_Pages_REST_Controller
     public function create(WP_REST_Request $request)
     {
         $params = $request->get_json_params();
-        $result = $this->pages->create((string) ($params['title'] ?? ''), get_current_user_id());
+        $result = $this->pages->create((string) ($params['title'] ?? ''), get_current_user_id(), sanitize_key((string) ($params['postType'] ?? 'page')));
         return is_wp_error($result) ? $result : new WP_REST_Response($this->expose($result), 201);
     }
     public function show(WP_REST_Request $request)
