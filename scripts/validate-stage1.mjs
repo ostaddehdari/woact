@@ -27,6 +27,7 @@ const required = [
   'wordpress/plugins/woact-core/assets/page-runtime.js',
   'wordpress/plugins/woact-core/assets/page-runtime.css',
   'wordpress/plugins/woact-core/includes/class-woact-widget-registry.php',
+  'wordpress/plugins/woact-core/examples/woact-ai-page-example.json',
   'docs/STAGE5_FA.md',
   'docs/WIDGET_SDK_FA.md',
 ];

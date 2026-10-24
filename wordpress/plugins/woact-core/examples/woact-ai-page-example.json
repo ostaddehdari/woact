@@ -1,0 +1,154 @@
+{
+  "product": "woact-page",
+  "schemaVersion": 1,
+  "version": "0.5.0-rc1",
+  "title": "صفحه شرکتی نمونه با هوش مصنوعی",
+  "document": {
+    "schemaVersion": 1,
+    "settings": {
+      "contentWidth": 1180,
+      "background": "#f8fafc",
+      "className": "ai-corporate-page",
+      "hideTitle": true
+    },
+    "nodes": [
+      {
+        "id": "hero_main_001",
+        "type": "section",
+        "props": { "tag": "section" },
+        "style": { "display": "flex", "direction": "column", "gap": 24, "padding": 64, "margin": 0, "background": "#eff6ff", "color": "#0f172a", "maxWidth": 1180, "minHeight": 480, "align": "stretch", "justify": "center", "radius": 24 },
+        "responsive": { "tablet": { "padding": 40 }, "mobile": { "padding": 24, "minHeight": 360 } },
+        "visibility": { "desktop": true, "tablet": true, "mobile": true },
+        "dynamic": "",
+        "locked": false,
+        "children": [
+          {
+            "id": "hero_widget_001",
+            "type": "hero",
+            "props": { "eyebrow": "WOACT REACT", "title": "کسب‌وکار شما، سریع‌تر و حرفه‌ای‌تر", "text": "یک تجربه مدرن، واکنش‌گرا و قابل مدیریت با وردپرس و React.", "buttonLabel": "شروع همکاری", "buttonUrl": "#contact", "image": "" },
+            "style": { "display": "flex", "direction": "row", "gap": 32, "padding": 0, "margin": 0, "background": "", "color": "#0f172a", "align": "center", "justify": "between", "fontSize": 18, "radius": 0 },
+            "responsive": { "tablet": {}, "mobile": { "direction": "column", "fontSize": 16 } },
+            "visibility": { "desktop": true, "tablet": true, "mobile": true },
+            "dynamic": "",
+            "locked": false,
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "services_section_001",
+        "type": "section",
+        "props": { "tag": "section" },
+        "style": { "display": "flex", "direction": "column", "gap": 28, "padding": 56, "margin": 0, "background": "#ffffff", "color": "#17202a", "maxWidth": 1180, "align": "stretch", "justify": "start", "radius": 24 },
+        "responsive": { "tablet": { "padding": 36 }, "mobile": { "padding": 22 } },
+        "visibility": { "desktop": true, "tablet": true, "mobile": true },
+        "dynamic": "",
+        "locked": false,
+        "children": [
+          {
+            "id": "services_title_001",
+            "type": "heading",
+            "props": { "text": "راهکارهای ما", "level": "h2" },
+            "style": { "display": "block", "direction": "column", "gap": 0, "padding": 0, "margin": 0, "background": "", "color": "#0f172a", "fontSize": 36, "fontWeight": 800, "align": "center" },
+            "responsive": { "tablet": { "fontSize": 32 }, "mobile": { "fontSize": 28 } },
+            "visibility": { "desktop": true, "tablet": true, "mobile": true },
+            "dynamic": "",
+            "locked": false,
+            "children": []
+          },
+          {
+            "id": "services_widget_001",
+            "type": "services",
+            "props": { "items": "طراحی تجربه کاربری|رابطی سریع، ساده و حرفه‌ای\nتوسعه React|کامپوننت‌های واقعی و قابل توسعه\nیکپارچگی وردپرس|مدیریت محتوا بدون از دست دادن سازگاری" },
+            "style": { "display": "grid", "direction": "row", "gap": 20, "padding": 0, "margin": 0, "background": "", "color": "#334155", "radius": 18 },
+            "responsive": { "tablet": {}, "mobile": { "direction": "column" } },
+            "visibility": { "desktop": true, "tablet": true, "mobile": true },
+            "dynamic": "",
+            "locked": false,
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "products_section_001",
+        "type": "section",
+        "props": { "tag": "section" },
+        "style": { "display": "flex", "direction": "column", "gap": 24, "padding": 56, "margin": 0, "background": "#f1f5f9", "color": "#0f172a", "maxWidth": 1180, "align": "stretch", "radius": 24 },
+        "responsive": { "tablet": { "padding": 36 }, "mobile": { "padding": 22 } },
+        "visibility": { "desktop": true, "tablet": true, "mobile": true },
+        "dynamic": "",
+        "locked": false,
+        "children": [
+          {
+            "id": "products_title_001",
+            "type": "heading",
+            "props": { "text": "محصولات منتخب", "level": "h2" },
+            "style": { "display": "block", "direction": "column", "gap": 0, "padding": 0, "margin": 0, "background": "", "color": "#0f172a", "fontSize": 34, "fontWeight": 800 },
+            "responsive": { "tablet": { "fontSize": 30 }, "mobile": { "fontSize": 26 } },
+            "visibility": { "desktop": true, "tablet": true, "mobile": true },
+            "dynamic": "",
+            "locked": false,
+            "children": []
+          },
+          {
+            "id": "products_grid_001",
+            "type": "product_grid",
+            "props": { "count": 8, "columns": 4 },
+            "style": { "display": "block", "direction": "row", "gap": 20, "padding": 0, "margin": 0, "background": "", "color": "#17202a", "radius": 16 },
+            "responsive": { "tablet": {}, "mobile": {} },
+            "visibility": { "desktop": true, "tablet": true, "mobile": true },
+            "dynamic": "",
+            "locked": false,
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "faq_section_001",
+        "type": "section",
+        "props": { "tag": "section" },
+        "style": { "display": "flex", "direction": "column", "gap": 24, "padding": 56, "margin": 0, "background": "#ffffff", "color": "#17202a", "maxWidth": 900, "align": "stretch", "radius": 24 },
+        "responsive": { "tablet": { "padding": 36 }, "mobile": { "padding": 22 } },
+        "visibility": { "desktop": true, "tablet": true, "mobile": true },
+        "dynamic": "",
+        "locked": false,
+        "children": [
+          {
+            "id": "faq_widget_001",
+            "type": "faq",
+            "props": { "items": "آیا این صفحه واقعاً React است؟|بله، بوم و خروجی نهایی از renderer مشترک React استفاده می‌کنند.\nآیا محتوا در وردپرس مدیریت می‌شود؟|بله، وردپرس همچنان CMS و منبع داده باقی می‌ماند.\nآیا ووکامرس سازگار است؟|ویجت‌ها به داده و endpointهای رسمی ووکامرس متصل می‌شوند." },
+            "style": { "display": "block", "direction": "column", "gap": 12, "padding": 0, "margin": 0, "background": "", "color": "#1e293b", "fontSize": 16, "radius": 14 },
+            "responsive": { "tablet": {}, "mobile": { "fontSize": 15 } },
+            "visibility": { "desktop": true, "tablet": true, "mobile": true },
+            "dynamic": "",
+            "locked": false,
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "contact_section_001",
+        "type": "section",
+        "props": { "tag": "section" },
+        "style": { "display": "flex", "direction": "column", "gap": 20, "padding": 48, "margin": 0, "background": "#0f766e", "color": "#ffffff", "maxWidth": 1180, "align": "stretch", "radius": 24 },
+        "responsive": { "tablet": { "padding": 36 }, "mobile": { "padding": 24 } },
+        "visibility": { "desktop": true, "tablet": true, "mobile": true },
+        "dynamic": "",
+        "locked": false,
+        "children": [
+          {
+            "id": "contact_cta_001",
+            "type": "contact_cta",
+            "props": { "title": "برای ساخت پروژه آماده‌اید؟", "text": "نیاز خود را برای ما بنویسید تا مسیر مناسب را پیشنهاد دهیم.", "buttonLabel": "تماس با ما", "buttonUrl": "#contact" },
+            "style": { "display": "flex", "direction": "row", "gap": 24, "padding": 0, "margin": 0, "background": "", "color": "#ffffff", "align": "center", "justify": "between", "radius": 0 },
+            "responsive": { "tablet": {}, "mobile": { "direction": "column" } },
+            "visibility": { "desktop": true, "tablet": true, "mobile": true },
+            "dynamic": "",
+            "locked": false,
+            "children": []
+          }
+        ]
+      }
+    ]
+  }
+}
