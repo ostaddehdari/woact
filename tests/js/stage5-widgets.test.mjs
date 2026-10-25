@@ -72,6 +72,13 @@ test('legacy WordPress content with empty Woact revision meta is safe', () => {
   assert.match(pagesRestPhp, /array_filter\(\(array\).*'is_array'\)/s);
 });
 
+test('invalid or Persian AI node ids produce stable revision tokens', () => {
+  assert.match(pagesPhp, /sanitize_node\(\$node, 0, \(string\) \$index\)/);
+  assert.match(pagesPhp, /stable_node_id/);
+  assert.match(pagesPhp, /hash\('sha256', \$path \. ':' \. \$type\)/);
+  assert.doesNotMatch(pagesPhp, /'id' => \$this->clean_id\(\(string\) \(\$node\['id'\]/);
+});
+
 test('page saves use the WordPress nonce middleware and cannot overlap', () => {
   assert.doesNotMatch(editor, /apiFetch\.use\(apiFetch\.createNonceMiddleware/);
   assert.match(editor, /saveInFlight = useRef\(null\)/);

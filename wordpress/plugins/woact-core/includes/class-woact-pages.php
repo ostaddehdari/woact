@@ -307,8 +307,8 @@ final class Woact_Pages
     {
         $settings = is_array($document['settings'] ?? null) ? $document['settings'] : [];
         $nodes = [];
-        foreach (array_slice((array) ($document['nodes'] ?? []), 0, 100) as $node) {
-            $clean = $this->sanitize_node($node, 0);
+        foreach (array_slice((array) ($document['nodes'] ?? []), 0, 100) as $index => $node) {
+            $clean = $this->sanitize_node($node, 0, (string) $index);
             if ($clean) {
                 $nodes[] = $clean;
             }
@@ -326,7 +326,7 @@ final class Woact_Pages
         ];
     }
 
-    private function sanitize_node($node, int $depth): ?array
+    private function sanitize_node($node, int $depth, string $path = '0'): ?array
     {
         if (!is_array($node) || $depth > 8 || !$this->is_allowed_type((string) ($node['type'] ?? ''))) {
             return null;
@@ -343,15 +343,15 @@ final class Woact_Pages
         }
         $children = [];
         if (in_array($type, self::CONTAINERS, true)) {
-            foreach (array_slice((array) ($node['children'] ?? []), 0, 50) as $child) {
-                $clean = $this->sanitize_node($child, $depth + 1);
+            foreach (array_slice((array) ($node['children'] ?? []), 0, 50) as $index => $child) {
+                $clean = $this->sanitize_node($child, $depth + 1, $path . '-' . $index);
                 if ($clean) {
                     $children[] = $clean;
                 }
             }
         }
         return [
-            'id' => $this->clean_id((string) ($node['id'] ?? 'node')),
+            'id' => $this->stable_node_id((string) ($node['id'] ?? ''), $type, $path),
             'type' => $type,
             'props' => $props,
             'style' => $this->sanitize_style((array) ($node['style'] ?? [])),
@@ -520,6 +520,13 @@ final class Woact_Pages
     {
         $id = preg_replace('/[^a-zA-Z0-9_-]/', '', $id) ?: '';
         return $id ?: $this->new_id('node');
+    }
+
+    private function stable_node_id(string $id, string $type, string $path): string
+    {
+        $clean = preg_replace('/[^a-zA-Z0-9_-]/', '', $id) ?: '';
+        if ($clean !== '') return $clean;
+        return sanitize_key($type ?: 'node') . '-' . substr(hash('sha256', $path . ':' . $type), 0, 12);
     }
 
     private function is_allowed_type(string $type): bool
