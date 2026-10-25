@@ -177,12 +177,18 @@ final class Woact_Core
         }
         if ($hook === 'admin_page_woact-edit') {
             wp_enqueue_media();
+            $controls_css = WOACT_CORE_DIR . 'assets/admin-controls.css';
+            $controls_responsive_css = WOACT_CORE_DIR . 'assets/admin-controls-responsive.css';
+            $controls_js = WOACT_CORE_DIR . 'assets/admin-controls.js';
             $css_file = WOACT_CORE_DIR . 'assets/admin-page-builder.css';
             $js_file = WOACT_CORE_DIR . 'assets/admin-page-builder.js';
+            wp_enqueue_style('woact-admin-controls', plugins_url('assets/admin-controls.css', WOACT_CORE_FILE), [], is_file($controls_css) ? (string) filemtime($controls_css) : WOACT_CORE_VERSION);
+            wp_enqueue_style('woact-admin-controls-responsive', plugins_url('assets/admin-controls-responsive.css', WOACT_CORE_FILE), ['woact-admin-controls'], is_file($controls_responsive_css) ? (string) filemtime($controls_responsive_css) : WOACT_CORE_VERSION);
             wp_enqueue_style('woact-page-runtime', plugins_url('assets/page-runtime.css', WOACT_CORE_FILE), [], WOACT_CORE_VERSION);
-            wp_enqueue_style('woact-admin-page-builder', plugins_url('assets/admin-page-builder.css', WOACT_CORE_FILE), ['woact-page-runtime'], is_file($css_file) ? (string) filemtime($css_file) : WOACT_CORE_VERSION);
+            wp_enqueue_style('woact-admin-page-builder', plugins_url('assets/admin-page-builder.css', WOACT_CORE_FILE), ['woact-page-runtime', 'woact-admin-controls'], is_file($css_file) ? (string) filemtime($css_file) : WOACT_CORE_VERSION);
             wp_enqueue_script('woact-page-runtime', plugins_url('assets/page-runtime.js', WOACT_CORE_FILE), ['wp-element'], WOACT_CORE_VERSION, true);
-            wp_enqueue_script('woact-admin-page-builder', plugins_url('assets/admin-page-builder.js', WOACT_CORE_FILE), ['wp-element', 'wp-api-fetch', 'woact-page-runtime'], is_file($js_file) ? (string) filemtime($js_file) : WOACT_CORE_VERSION, true);
+            wp_enqueue_script('woact-admin-controls', plugins_url('assets/admin-controls.js', WOACT_CORE_FILE), ['wp-element'], is_file($controls_js) ? (string) filemtime($controls_js) : WOACT_CORE_VERSION, true);
+            wp_enqueue_script('woact-admin-page-builder', plugins_url('assets/admin-page-builder.js', WOACT_CORE_FILE), ['wp-element', 'wp-api-fetch', 'woact-page-runtime', 'woact-admin-controls'], is_file($js_file) ? (string) filemtime($js_file) : WOACT_CORE_VERSION, true);
             $user = wp_get_current_user();
             wp_add_inline_script('woact-admin-page-builder', 'window.WoactPageBuilderConfig=' . wp_json_encode([
                 'nonce' => wp_create_nonce('wp_rest'), 'version' => WOACT_CORE_VERSION,
@@ -202,12 +208,18 @@ final class Woact_Core
             return;
         }
         wp_enqueue_media();
+        $controls_css = WOACT_CORE_DIR . 'assets/admin-controls.css';
+        $controls_responsive_css = WOACT_CORE_DIR . 'assets/admin-controls-responsive.css';
+        $controls_js = WOACT_CORE_DIR . 'assets/admin-controls.js';
         $css_file = WOACT_CORE_DIR . 'assets/admin-layout-builder.css';
         $js_file = WOACT_CORE_DIR . 'assets/admin-layout-builder.js';
-        wp_enqueue_style('woact-admin-layout-builder', plugins_url('assets/admin-layout-builder.css', WOACT_CORE_FILE), [], is_file($css_file) ? (string) filemtime($css_file) : WOACT_CORE_VERSION);
+        wp_enqueue_style('woact-admin-controls', plugins_url('assets/admin-controls.css', WOACT_CORE_FILE), [], is_file($controls_css) ? (string) filemtime($controls_css) : WOACT_CORE_VERSION);
+        wp_enqueue_style('woact-admin-controls-responsive', plugins_url('assets/admin-controls-responsive.css', WOACT_CORE_FILE), ['woact-admin-controls'], is_file($controls_responsive_css) ? (string) filemtime($controls_responsive_css) : WOACT_CORE_VERSION);
+        wp_enqueue_style('woact-admin-layout-builder', plugins_url('assets/admin-layout-builder.css', WOACT_CORE_FILE), ['woact-admin-controls'], is_file($css_file) ? (string) filemtime($css_file) : WOACT_CORE_VERSION);
         wp_enqueue_style('woact-layout-runtime', plugins_url('assets/layout-runtime.css', WOACT_CORE_FILE), [], WOACT_CORE_VERSION);
         wp_enqueue_script('woact-layout-runtime', plugins_url('assets/layout-runtime.js', WOACT_CORE_FILE), ['wp-element'], WOACT_CORE_VERSION, true);
-        wp_enqueue_script('woact-admin-layout-builder', plugins_url('assets/admin-layout-builder.js', WOACT_CORE_FILE), ['wp-element', 'wp-api-fetch', 'woact-layout-runtime'], is_file($js_file) ? (string) filemtime($js_file) : WOACT_CORE_VERSION, true);
+        wp_enqueue_script('woact-admin-controls', plugins_url('assets/admin-controls.js', WOACT_CORE_FILE), ['wp-element'], is_file($controls_js) ? (string) filemtime($controls_js) : WOACT_CORE_VERSION, true);
+        wp_enqueue_script('woact-admin-layout-builder', plugins_url('assets/admin-layout-builder.js', WOACT_CORE_FILE), ['wp-element', 'wp-api-fetch', 'woact-layout-runtime', 'woact-admin-controls'], is_file($js_file) ? (string) filemtime($js_file) : WOACT_CORE_VERSION, true);
         wp_add_inline_script('woact-admin-layout-builder', 'window.WoactBuilderConfig=' . wp_json_encode([
             'nonce' => wp_create_nonce('wp_rest'),
             'version' => WOACT_CORE_VERSION,

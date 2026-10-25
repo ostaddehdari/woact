@@ -1,0 +1,6 @@
+.woact-control{position:relative}
+.woact-control-device{position:absolute;z-index:2;top:-22px;left:24px;color:#7c3aed}
+.woact-control-device .dashicons{width:14px;height:14px;font-size:14px}
+.woact-control-reset{position:absolute;top:-24px;left:0;width:20px!important;min-height:20px!important;padding:0!important;border:0!important;background:transparent!important;color:#98a2b3;opacity:0;cursor:pointer}
+.woact-control:hover>.woact-control-reset{opacity:1}
+.woact-control-reset .dashicons{width:14px;height:14px;font-size:14px}

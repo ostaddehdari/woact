@@ -24,7 +24,7 @@ final class Woact_Pages
 
     public function get_manifest(): array
     {
-        $field = static fn(string $id, string $label, string $type = 'text', $default = ''): array => compact('id', 'label', 'type', 'default');
+        $field = static fn(string $id, string $label, string $type = 'text', $default = '', array $extra = []): array => array_merge(compact('id', 'label', 'type', 'default'), $extra);
         $manifest = [
             'schemaVersion' => self::SCHEMA_VERSION,
             'categories' => [
@@ -33,22 +33,23 @@ final class Woact_Pages
                 ['id' => 'media', 'label' => 'رسانه'],
             ],
             'components' => [
-                ['type' => 'section', 'label' => 'بخش', 'icon' => 'align-wide', 'category' => 'layout', 'container' => true, 'defaults' => ['tag' => 'section'], 'fields' => [$field('tag', 'تگ HTML', 'select', 'section')]],
+                ['type' => 'section', 'label' => 'بخش', 'icon' => 'align-wide', 'category' => 'layout', 'container' => true, 'defaults' => ['tag' => 'section'], 'fields' => [$field('tag', 'تگ HTML', 'select', 'section', ['options' => ['section', 'header', 'footer', 'main', 'article', 'aside']])]],
                 ['type' => 'container', 'label' => 'کانتینر', 'icon' => 'editor-table', 'category' => 'layout', 'container' => true, 'defaults' => [], 'fields' => []],
                 ['type' => 'columns', 'label' => 'ستون‌ها', 'icon' => 'columns', 'category' => 'layout', 'container' => true, 'defaults' => [], 'fields' => []],
-                ['type' => 'column', 'label' => 'ستون', 'icon' => 'excerpt-view', 'category' => 'layout', 'container' => true, 'defaults' => ['basis' => 6], 'fields' => [$field('basis', 'عرض از ۱۲', 'number', 6)]],
-                ['type' => 'heading', 'label' => 'عنوان', 'icon' => 'heading', 'category' => 'basic', 'defaults' => ['text' => 'عنوان جدید', 'level' => 'h2'], 'fields' => [$field('text', 'متن', 'textarea'), $field('level', 'سطح عنوان', 'select', 'h2')]],
+                ['type' => 'column', 'label' => 'ستون', 'icon' => 'excerpt-view', 'category' => 'layout', 'container' => true, 'defaults' => ['basis' => 6], 'fields' => [$field('basis', 'عرض از ۱۲', 'slider', 6, ['min' => 1, 'max' => 12])]],
+                ['type' => 'heading', 'label' => 'عنوان', 'icon' => 'heading', 'category' => 'basic', 'defaults' => ['text' => 'عنوان جدید', 'level' => 'h2'], 'fields' => [$field('text', 'متن', 'textarea'), $field('level', 'سطح عنوان', 'button_group', 'h2', ['options' => ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']])]],
                 ['type' => 'text', 'label' => 'متن', 'icon' => 'editor-paragraph', 'category' => 'basic', 'defaults' => ['text' => 'متن خود را اینجا بنویسید.'], 'fields' => [$field('text', 'متن', 'textarea')]],
-                ['type' => 'button', 'label' => 'دکمه', 'icon' => 'button', 'category' => 'basic', 'defaults' => ['label' => 'بیشتر بدانید', 'url' => '#', 'variant' => 'primary'], 'fields' => [$field('label', 'عنوان'), $field('url', 'پیوند', 'url'), $field('variant', 'نوع', 'select', 'primary')]],
-                ['type' => 'image', 'label' => 'تصویر', 'icon' => 'format-image', 'category' => 'media', 'defaults' => ['url' => '', 'alt' => '', 'caption' => ''], 'fields' => [$field('url', 'نشانی تصویر', 'url'), $field('alt', 'متن جایگزین'), $field('caption', 'زیرنویس')]],
+                ['type' => 'button', 'label' => 'دکمه', 'icon' => 'button', 'category' => 'basic', 'defaults' => ['label' => 'بیشتر بدانید', 'url' => '#', 'variant' => 'primary'], 'fields' => [$field('label', 'عنوان'), $field('url', 'پیوند', 'url'), $field('variant', 'نوع', 'button_group', 'primary', ['options' => [['value' => 'primary', 'label' => 'اصلی'], ['value' => 'outline', 'label' => 'خطی']]])]],
+                ['type' => 'image', 'label' => 'تصویر', 'icon' => 'format-image', 'category' => 'media', 'defaults' => ['url' => '', 'alt' => '', 'caption' => ''], 'fields' => [$field('url', 'تصویر', 'media'), $field('alt', 'متن جایگزین'), $field('caption', 'زیرنویس')]],
                 ['type' => 'icon', 'label' => 'آیکون', 'icon' => 'star-filled', 'category' => 'basic', 'defaults' => ['icon' => '★'], 'fields' => [$field('icon', 'آیکون')]],
                 ['type' => 'list', 'label' => 'فهرست', 'icon' => 'editor-ul', 'category' => 'basic', 'defaults' => ['items' => "مورد اول\nمورد دوم\nمورد سوم"], 'fields' => [$field('items', 'هر مورد در یک خط', 'textarea')]],
                 ['type' => 'quote', 'label' => 'نقل‌قول', 'icon' => 'format-quote', 'category' => 'basic', 'defaults' => ['text' => 'متن نقل‌قول', 'author' => ''], 'fields' => [$field('text', 'متن', 'textarea'), $field('author', 'نویسنده')]],
                 ['type' => 'divider', 'label' => 'جداکننده', 'icon' => 'minus', 'category' => 'layout', 'defaults' => [], 'fields' => []],
-                ['type' => 'spacer', 'label' => 'فاصله', 'icon' => 'leftright', 'category' => 'layout', 'defaults' => ['height' => 40], 'fields' => [$field('height', 'ارتفاع', 'number', 40)]],
-                ['type' => 'html', 'label' => 'HTML امن', 'icon' => 'editor-code', 'category' => 'basic', 'defaults' => ['html' => ''], 'fields' => [$field('html', 'HTML', 'textarea')]],
+                ['type' => 'spacer', 'label' => 'فاصله', 'icon' => 'leftright', 'category' => 'layout', 'defaults' => ['height' => 40], 'fields' => [$field('height', 'ارتفاع', 'slider', 40, ['min' => 0, 'max' => 500])]],
+                ['type' => 'html', 'label' => 'HTML امن', 'icon' => 'editor-code', 'category' => 'basic', 'defaults' => ['html' => ''], 'fields' => [$field('html', 'HTML', 'code')]],
             ],
             'breakpoints' => ['desktop' => 1200, 'tablet' => 782, 'mobile' => 480],
+            'controls' => Woact_Control_Schema::manifest(),
             'dynamicSources' => [
                 ['value' => '', 'label' => 'بدون داده پویا'],
                 ['value' => 'post.title', 'label' => 'عنوان نوشته'],
@@ -281,12 +282,8 @@ final class Woact_Pages
             $key = sanitize_key((string) $key);
             if ($key === 'html' && $type === 'html') {
                 $props[$key] = wp_kses_post((string) $value);
-            } elseif (strpos($key, 'url') !== false) {
-                $props[$key] = esc_url_raw((string) $value);
-            } elseif (is_bool($value) || is_numeric($value)) {
-                $props[$key] = $value;
             } else {
-                $props[$key] = sanitize_textarea_field((string) $value);
+                $props[$key] = $this->sanitize_prop_value($value, $key, 0);
             }
         }
         $children = [];
@@ -342,6 +339,24 @@ final class Woact_Pages
             $out['shadow'] = sanitize_text_field((string) $style['shadow']);
         }
         return $out;
+    }
+
+    private function sanitize_prop_value($value, string $key, int $depth)
+    {
+        if ($depth > 5) return null;
+        if (is_array($value)) {
+            $out = [];
+            foreach (array_slice($value, 0, 100, true) as $child_key => $child_value) {
+                $clean_key = is_int($child_key) ? $child_key : sanitize_key((string) $child_key);
+                $out[$clean_key] = $this->sanitize_prop_value($child_value, (string) $clean_key, $depth + 1);
+            }
+            return $out;
+        }
+        if (is_bool($value) || is_numeric($value) || $value === null) return $value;
+        if (stripos($key, 'url') !== false || in_array($key, ['image', 'poster', 'src'], true)) {
+            return esc_url_raw((string) $value);
+        }
+        return sanitize_textarea_field((string) $value);
     }
 
     private function blank_document(): array
