@@ -11,11 +11,29 @@ const layoutEditor = readFileSync('wordpress/plugins/woact-core/assets/admin-lay
 const phpCore = readFileSync('wordpress/plugins/woact-core/includes/class-woact-core.php', 'utf8');
 const pagesPhp = readFileSync('wordpress/plugins/woact-core/includes/class-woact-pages.php', 'utf8');
 const pagesRestPhp = readFileSync('wordpress/plugins/woact-core/includes/class-woact-pages-rest-controller.php', 'utf8');
+const widgetRuntime = readFileSync('wordpress/plugins/woact-core/assets/widget-runtime-registry.js', 'utf8');
+const packagedWidget = readFileSync('wordpress/plugins/woact-core/widgets/notice-card/widget.php', 'utf8');
+const packagedRenderer = readFileSync('wordpress/plugins/woact-core/widgets/notice-card/runtime.js', 'utf8');
+const scaffold = readFileSync('scripts/create-widget.mjs', 'utf8');
 
 test('widget SDK exposes registration and extension hooks', () => {
   assert.match(core, /function woact_register_widget/);
   assert.match(registry, /woact_register_widgets/);
   assert.match(registry, /woact_widget_runtime_data/);
+});
+
+test('stage 5 supports self-contained, versioned widget packages', () => {
+  assert.match(registry, /discover_packages/);
+  assert.match(registry, /glob\(\$root \. '\*\/widget\.php'/);
+  assert.match(registry, /migrate_props/);
+  assert.match(registry, /register_resolver/);
+  assert.match(registry, /enqueue_assets/);
+  assert.match(widgetRuntime, /register: register/);
+  assert.match(runtime, /WoactWidgetRuntime\.render/);
+  assert.match(packagedWidget, /'type' => 'notice_card'/);
+  assert.match(packagedWidget, /'migrations'/);
+  assert.match(packagedRenderer, /runtime\.register\('notice_card'/);
+  assert.match(scaffold, /widgets.*slug/s);
 });
 
 test('registry contains WordPress and WooCommerce packs', () => {

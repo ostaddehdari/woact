@@ -7,13 +7,18 @@ if (!defined('ABSPATH') && !defined('WOACT_TESTING')) exit;
 final class Woact_Widget_Registry
 {
     private array $definitions = [];
+    private array $categories = [];
+    private array $resolvers = [];
+    private array $packages = [];
     private bool $booted = false;
 
     public function boot(): void
     {
         if ($this->booted) return;
         $this->booted = true;
+        foreach ($this->default_categories() as $category) $this->register_category($category);
         foreach ($this->default_definitions() as $definition) $this->register($definition);
+        $this->discover_packages();
         if (function_exists('do_action')) do_action('woact_register_widgets', $this);
         if (function_exists('apply_filters')) {
             $filtered = apply_filters('woact_widget_definitions', $this->definitions, $this);
@@ -34,7 +39,26 @@ final class Woact_Widget_Registry
         $definition['container'] = !empty($definition['container']);
         $definition['dataGroup'] = sanitize_key((string) ($definition['dataGroup'] ?? ''));
         $definition['assets'] = is_array($definition['assets'] ?? null) ? $definition['assets'] : [];
+        $definition['version'] = preg_replace('/[^0-9A-Za-z._-]/', '', (string) ($definition['version'] ?? '1.0.0')) ?: '1.0.0';
+        $definition['package'] = sanitize_key((string) ($definition['package'] ?? 'core'));
+        $definition['dependencies'] = array_values(array_filter(array_map('sanitize_key', (array) ($definition['dependencies'] ?? []))));
         $this->definitions[$type] = $definition;
+        return true;
+    }
+
+    public function register_category(array $category): bool
+    {
+        $id = sanitize_key((string) ($category['id'] ?? ''));
+        if ($id === '') return false;
+        $this->categories[$id] = ['id' => $id, 'label' => sanitize_text_field((string) ($category['label'] ?? $id))];
+        return true;
+    }
+
+    public function register_resolver(string $group, callable $resolver): bool
+    {
+        $group = sanitize_key($group);
+        if ($group === '') return false;
+        $this->resolvers[$group] = $resolver;
         return true;
     }
 
@@ -47,10 +71,19 @@ final class Woact_Widget_Registry
     public function definitions(): array
     {
         $this->boot();
-        return array_values($this->definitions);
+        return array_values(array_map(static function (array $definition): array {
+            unset($definition['_packageDir'], $definition['migrations']);
+            return $definition;
+        }, $this->definitions));
     }
 
     public function categories(): array
+    {
+        $this->boot();
+        return array_values($this->categories);
+    }
+
+    private function default_categories(): array
     {
         return [
             ['id' => 'general_widgets', 'label' => 'ویجت‌های عمومی'],
@@ -62,6 +95,45 @@ final class Woact_Widget_Registry
             ['id' => 'woo_product', 'label' => 'محصول تکی'],
             ['id' => 'woo_account', 'label' => 'خرید و حساب کاربری'],
         ];
+    }
+
+    private function discover_packages(): void
+    {
+        $root = defined('WOACT_CORE_DIR') ? WOACT_CORE_DIR . 'widgets/' : dirname(__DIR__) . '/widgets/';
+        foreach ((array) glob($root . '*/widget.php') as $file) {
+            $definition = include $file;
+            if (!is_array($definition)) continue;
+            $definition['_packageDir'] = dirname($file);
+            $definition['package'] = basename(dirname($file));
+            if ($this->register($definition)) $this->packages[$definition['type']] = dirname($file);
+        }
+    }
+
+    public function migrate_props(string $type, array $props, string $from_version = '0.0.0'): array
+    {
+        $this->boot();
+        $definition = $this->definitions[sanitize_key($type)] ?? [];
+        foreach ((array) ($definition['migrations'] ?? []) as $version => $migration) {
+            if (is_callable($migration) && version_compare($from_version, (string) $version, '<')) $props = (array) $migration($props);
+        }
+        return $props;
+    }
+
+    public function enqueue_assets(array $document, bool $editor = false): void
+    {
+        $this->boot();
+        $types = $editor ? array_keys($this->packages) : $this->collect_types($document);
+        foreach ($types as $type) {
+            $definition = $this->definitions[$type] ?? [];
+            $dir = (string) ($definition['_packageDir'] ?? '');
+            if ($dir === '' || !defined('WOACT_CORE_FILE')) continue;
+            $base = 'widgets/' . basename($dir) . '/';
+            $handle = 'woact-widget-' . sanitize_key($type);
+            $style = $dir . '/style.css';
+            $script = $dir . '/runtime.js';
+            if (is_file($style)) wp_enqueue_style($handle, plugins_url($base . 'style.css', WOACT_CORE_FILE), ['woact-page-runtime'], (string) filemtime($style));
+            if (is_file($script)) wp_enqueue_script($handle, plugins_url($base . 'runtime.js', WOACT_CORE_FILE), ['woact-widget-runtime-registry'], (string) filemtime($script), true);
+        }
     }
 
     public function collect_types(array $document): array
@@ -80,6 +152,7 @@ final class Woact_Widget_Registry
 
     public function required_assets(array $document): array
     {
+        $this->boot();
         $assets = [];
         foreach ($this->collect_types($document) as $type) {
             foreach ((array) ($this->definitions[$type]['assets'] ?? []) as $asset) $assets[$asset] = true;
@@ -103,6 +176,9 @@ final class Woact_Widget_Registry
         if (isset($groups['commerce'])) $data['commerce'] = $this->resolve_commerce();
         if (isset($groups['product'])) $data['product'] = $this->resolve_product($post_id);
         if (isset($groups['account'])) $data['account'] = $this->resolve_account();
+        foreach (array_keys($groups) as $group) {
+            if (isset($this->resolvers[$group])) $data[$group] = (array) call_user_func($this->resolvers[$group], $document, $post_id, $this);
+        }
         return function_exists('apply_filters') ? apply_filters('woact_widget_runtime_data', $data, $document, $post_id) : $data;
     }
 

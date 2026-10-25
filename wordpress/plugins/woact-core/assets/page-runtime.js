@@ -64,6 +64,9 @@
     (Array.isArray(design.attributes) ? design.attributes : []).forEach(function (item) { var key = String(item.key || '').toLowerCase(); if (/^(data|aria)-[a-z0-9_-]+$/.test(key) || ['title', 'role', 'tabindex'].indexOf(key) !== -1) common[key === 'tabindex' ? 'tabIndex' : key] = String(item.value || ''); });
     var widgets = (props.data && props.data.widgets) || {};
     var children = (node.children || []).map(function (child) { return h(Node, { key: child.id, node: child, device: device, data: props.data }); });
+    if (window.WoactWidgetRuntime && window.WoactWidgetRuntime.has(node.type)) {
+      return window.WoactWidgetRuntime.render(node.type, { h: h, node: node, props: p, common: common, style: style, data: props.data || {}, widgets: widgets, children: children, device: device });
+    }
     if (node.type === 'section') return h(['section', 'header', 'footer', 'main', 'article', 'aside'].indexOf(p.tag) >= 0 ? p.tag : 'section', common, children);
     if (node.type === 'container' || node.type === 'columns') return h('div', common, children);
     if (node.type === 'column') return h('div', Object.assign({}, common, { style: Object.assign({}, style, { flexBasis: ((p.basis || 6) / 12 * 100) + '%' }) }), children);

@@ -1,12 +1,13 @@
 {
   "name": "woact",
-  "version": "0.9.0-rc1",
+  "version": "1.0.0-rc1",
   "private": true,
   "description": "React-first WordPress theme platform with progressive builder compatibility.",
   "scripts": {
     "test": "node --test tests/js/*.test.mjs",
     "validate": "node scripts/validate-stage1.mjs",
     "package": "bash scripts/package.sh",
+    "create-widget": "node scripts/create-widget.mjs",
     "check": "npm run test && npm run validate"
   },
   "engines": {

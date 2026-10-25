@@ -188,7 +188,9 @@ final class Woact_Core
             wp_enqueue_style('woact-admin-controls-responsive', plugins_url('assets/admin-controls-responsive.css', WOACT_CORE_FILE), ['woact-admin-controls'], is_file($controls_responsive_css) ? (string) filemtime($controls_responsive_css) : WOACT_CORE_VERSION);
             wp_enqueue_style('woact-page-runtime', plugins_url('assets/page-runtime.css', WOACT_CORE_FILE), [], WOACT_CORE_VERSION);
             wp_enqueue_style('woact-admin-page-builder', plugins_url('assets/admin-page-builder.css', WOACT_CORE_FILE), ['woact-page-runtime', 'woact-admin-controls'], is_file($css_file) ? (string) filemtime($css_file) : WOACT_CORE_VERSION);
-            wp_enqueue_script('woact-page-runtime', plugins_url('assets/page-runtime.js', WOACT_CORE_FILE), ['wp-element'], WOACT_CORE_VERSION, true);
+            wp_enqueue_script('woact-widget-runtime-registry', plugins_url('assets/widget-runtime-registry.js', WOACT_CORE_FILE), ['wp-element'], WOACT_CORE_VERSION, true);
+            wp_enqueue_script('woact-page-runtime', plugins_url('assets/page-runtime.js', WOACT_CORE_FILE), ['wp-element', 'woact-widget-runtime-registry'], WOACT_CORE_VERSION, true);
+            $this->widgets->enqueue_assets([], true);
             wp_enqueue_script('woact-admin-controls', plugins_url('assets/admin-controls.js', WOACT_CORE_FILE), ['wp-element'], is_file($controls_js) ? (string) filemtime($controls_js) : WOACT_CORE_VERSION, true);
             wp_enqueue_script('woact-admin-design-system', plugins_url('assets/admin-design-system.js', WOACT_CORE_FILE), ['wp-element', 'woact-admin-controls'], is_file($design_js) ? (string) filemtime($design_js) : WOACT_CORE_VERSION, true);
             wp_enqueue_script('woact-admin-global-design', plugins_url('assets/admin-global-design.js', WOACT_CORE_FILE), ['wp-element', 'woact-admin-controls'], is_file($global_design_js) ? (string) filemtime($global_design_js) : WOACT_CORE_VERSION, true);
@@ -628,7 +630,9 @@ final class Woact_Core
             $page_css = WOACT_CORE_DIR . 'assets/page-runtime.css';
             $page_js = WOACT_CORE_DIR . 'assets/page-runtime.js';
             wp_enqueue_style('woact-page-runtime', plugins_url('assets/page-runtime.css', WOACT_CORE_FILE), [], is_file($page_css) ? (string) filemtime($page_css) : WOACT_CORE_VERSION);
-            wp_enqueue_script('woact-page-runtime', plugins_url('assets/page-runtime.js', WOACT_CORE_FILE), ['wp-element'], is_file($page_js) ? (string) filemtime($page_js) : WOACT_CORE_VERSION, true);
+            wp_enqueue_script('woact-widget-runtime-registry', plugins_url('assets/widget-runtime-registry.js', WOACT_CORE_FILE), ['wp-element'], WOACT_CORE_VERSION, true);
+            wp_enqueue_script('woact-page-runtime', plugins_url('assets/page-runtime.js', WOACT_CORE_FILE), ['wp-element', 'woact-widget-runtime-registry'], is_file($page_js) ? (string) filemtime($page_js) : WOACT_CORE_VERSION, true);
+            $this->widgets->enqueue_assets($page_document);
         }
         wp_add_inline_script('woact-layout-runtime', 'window.WoactLayoutsBootstrap=' . wp_json_encode([
             'header' => $header,
