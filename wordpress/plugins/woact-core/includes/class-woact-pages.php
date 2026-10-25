@@ -16,6 +16,7 @@ final class Woact_Pages
     private const NODE_TYPES = ['section', 'container', 'columns', 'column', 'heading', 'text', 'button', 'image', 'icon', 'list', 'quote', 'divider', 'spacer', 'html'];
     private const CONTAINERS = ['section', 'container', 'columns', 'column'];
     private ?Woact_Widget_Registry $widgets;
+    private array $prop_keys = [];
 
     public function __construct(?Woact_Widget_Registry $widgets = null)
     {
@@ -346,7 +347,8 @@ final class Woact_Pages
         $type = (string) $node['type'];
         $props = [];
         foreach ((array) ($node['props'] ?? []) as $key => $value) {
-            $key = sanitize_key((string) $key);
+            $key = $this->canonical_prop_key($type, (string) $key);
+            if ($key === '') continue;
             if ($key === 'html' && $type === 'html') {
                 $props[$key] = wp_kses_post((string) $value);
             } else {
@@ -485,7 +487,8 @@ final class Woact_Pages
         if (is_array($value)) {
             $out = [];
             foreach (array_slice($value, 0, 100, true) as $child_key => $child_value) {
-                $clean_key = is_int($child_key) ? $child_key : sanitize_key((string) $child_key);
+                $clean_key = is_int($child_key) ? $child_key : $this->safe_prop_key((string) $child_key);
+                if ($clean_key === '') continue;
                 $out[$clean_key] = $this->sanitize_prop_value($child_value, (string) $clean_key, $depth + 1);
             }
             return $out;
@@ -495,6 +498,30 @@ final class Woact_Pages
             return esc_url_raw((string) $value);
         }
         return sanitize_textarea_field((string) $value);
+    }
+
+    private function canonical_prop_key(string $type, string $key): string
+    {
+        $safe = $this->safe_prop_key($key);
+        if ($safe === '') return '';
+        if (!$this->prop_keys) {
+            foreach ((array) ($this->get_manifest()['components'] ?? []) as $component) {
+                if (!is_array($component)) continue;
+                $component_type = (string) ($component['type'] ?? '');
+                $known = array_keys((array) ($component['defaults'] ?? []));
+                foreach ((array) ($component['fields'] ?? []) as $field) {
+                    if (is_array($field) && isset($field['id'])) $known[] = (string) $field['id'];
+                }
+                foreach (array_unique($known) as $candidate) $this->prop_keys[$component_type][strtolower($candidate)] = $candidate;
+            }
+        }
+        return (string) ($this->prop_keys[$type][strtolower($safe)] ?? $safe);
+    }
+
+    private function safe_prop_key(string $key): string
+    {
+        $key = preg_replace('/[^a-zA-Z0-9_-]/', '', $key) ?: '';
+        return substr($key, 0, 80);
     }
 
     private function blank_document(): array

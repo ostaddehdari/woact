@@ -87,6 +87,12 @@ test('revision mismatch is archived and never blocks publishing with 409', () =>
   assert.match(editor, /نسخهٔ سرور در تاریخچه نگه‌داری/);
 });
 
+test('saving preserves camelCase widget props and repairs old lowercase props', () => {
+  assert.match(pagesPhp, /canonical_prop_key\(\$type, \(string\) \$key\)/);
+  assert.match(pagesPhp, /\$this->prop_keys\[\$component_type\]\[strtolower\(\$candidate\)\]/);
+  assert.match(pagesPhp, /private function safe_prop_key/);
+});
+
 test('page saves use the WordPress nonce middleware and cannot overlap', () => {
   assert.doesNotMatch(editor, /apiFetch\.use\(apiFetch\.createNonceMiddleware/);
   assert.match(editor, /saveInFlight = useRef\(null\)/);
