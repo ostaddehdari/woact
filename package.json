@@ -1,6 +1,6 @@
 {
   "name": "woact",
-  "version": "0.5.3-rc1",
+  "version": "0.5.4-rc1",
   "private": true,
   "description": "React-first WordPress theme platform with progressive builder compatibility.",
   "scripts": {

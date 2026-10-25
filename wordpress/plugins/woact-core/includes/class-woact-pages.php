@@ -151,7 +151,8 @@ final class Woact_Pages
         if (!$current) {
             return new WP_Error('woact_page_missing', __('برگه پیدا نشد.', 'woact-core'), ['status' => 404]);
         }
-        $revisions = (array) get_post_meta($post_id, self::META_REVISIONS, true);
+        $revisions = get_post_meta($post_id, self::META_REVISIONS, true);
+        $revisions = is_array($revisions) ? array_values(array_filter($revisions, 'is_array')) : [];
         if (is_array($current['published'])) {
             array_unshift($revisions, ['id' => wp_generate_uuid4(), 'createdAt' => time(), 'userId' => $user_id, 'document' => $current['published']]);
             $revisions = array_slice($revisions, 0, 30);

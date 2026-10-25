@@ -4,7 +4,6 @@
   var e = wp.element, h = e.createElement, Fragment = e.Fragment;
   var useState = e.useState, useEffect = e.useEffect, useRef = e.useRef;
   var apiFetch = wp.apiFetch;
-  if (config.nonce && apiFetch.createNonceMiddleware) apiFetch.use(apiFetch.createNonceMiddleware(config.nonce));
   function clone(v) { return JSON.parse(JSON.stringify(v)); }
   function same(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
   function uid(type) { return type + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
@@ -81,15 +80,31 @@
     var _saving = useState(false), saving = _saving[0], setSaving = _saving[1];
     var undo = useRef([]), redo = useRef([]), clipboard = useRef(null);
     var importRef = useRef(null);
+    var saveInFlight = useRef(null);
     var dirty = page && saved ? !same(page, saved) : false;
     useEffect(function () { apiFetch({ path: '/woact/v1/admin/pages' }).then(function (value) { setData(value); var requested = Number(config.initialPostId || 0); if (requested) load(requested); else if (value.pages[0]) load(value.pages[0].id); }).catch(function (error) { setNotice({ type: 'error', message: error.message || 'اطلاعات صفحه‌ساز بارگذاری نشد.' }); }); }, []);
-    useEffect(function () { if (!dirty) return; var timer = setTimeout(function () { save(true); }, 12000); return function () { clearTimeout(timer); }; }, [page, dirty]);
     function load(id) { return apiFetch({ path: '/woact/v1/admin/pages/' + id }).then(function (value) { setPage(clone(value)); setSaved(clone(value)); setSelected(''); undo.current = []; redo.current = []; return value; }).catch(function (error) { setNotice({ type: 'error', message: error.message || 'این نوشته برای ویرایش با Woact بارگذاری نشد.' }); return null; }); }
     function commit(mutator) { if (!page) return; undo.current.push(clone(page)); if (undo.current.length > 60) undo.current.shift(); redo.current = []; var next = clone(page); mutator(next); setPage(next); }
     function history(direction) { var source = direction === 'undo' ? undo : redo, target = direction === 'undo' ? redo : undo; if (!source.current.length) return; target.current.push(clone(page)); setPage(source.current.pop()); }
     function create() { var title = window.prompt('عنوان صفحه جدید:', 'صفحه React جدید'); if (!title) return; apiFetch({ path: '/woact/v1/admin/pages', method: 'POST', data: { title: title } }).then(function (value) { setData(function (current) { return Object.assign({}, current, { pages: [{ id: value.id, title: value.title, status: value.status, enabled: true, hasDocument: true }].concat(current.pages) }); }); setPage(clone(value)); setSaved(clone(value)); }); }
-    function save(silent) { if (!page || saving) return Promise.resolve(page); setSaving(true); return apiFetch({ path: '/woact/v1/admin/pages/' + page.id, method: 'POST', data: { title: page.title, enabled: page.enabled, document: page.draft, revision: page.revision } }).then(function (value) { setPage(clone(value)); setSaved(clone(value)); if (!silent) setNotice({ type: 'success', message: 'پیش‌نویس ذخیره شد.' }); return value; }).catch(function (error) { setNotice({ type: 'error', message: error.message }); throw error; }).finally(function () { setSaving(false); }); }
-    function publish() { save(true).then(function (value) { return apiFetch({ path: '/woact/v1/admin/pages/' + value.id + '/publish', method: 'POST' }); }).then(function (value) { setPage(clone(value)); setSaved(clone(value)); setNotice({ type: 'success', message: 'صفحه React منتشر شد.' }); }); }
+    function save(silent) {
+      if (!page) return Promise.resolve(null);
+      if (saveInFlight.current) return saveInFlight.current;
+      setSaving(true);
+      var request = apiFetch({ path: '/woact/v1/admin/pages/' + page.id, method: 'POST', data: { title: page.title, enabled: page.enabled, document: page.draft, revision: page.revision } })
+        .then(function (value) { setPage(clone(value)); setSaved(clone(value)); if (!silent) setNotice({ type: 'success', message: 'پیش‌نویس ذخیره شد.' }); return value; })
+        .catch(function (error) { setNotice({ type: 'error', message: error.message || 'ذخیره انجام نشد.' }); throw error; })
+        .finally(function () { saveInFlight.current = null; setSaving(false); });
+      saveInFlight.current = request;
+      return request;
+    }
+    function publish() {
+      if (saving || saveInFlight.current) return;
+      save(true)
+        .then(function (value) { return value ? apiFetch({ path: '/woact/v1/admin/pages/' + value.id + '/publish', method: 'POST' }) : null; })
+        .then(function (value) { if (!value) return; setPage(clone(value)); setSaved(clone(value)); setNotice({ type: 'success', message: 'صفحه React منتشر شد.' }); })
+        .catch(function (error) { setNotice({ type: 'error', message: error.message || 'انتشار انجام نشد.' }); });
+    }
     function exportJson() { var payload = { product: 'woact-page', schemaVersion: data.manifest.schemaVersion, version: data.version, title: page.title, document: page.draft }; var url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })); var link = document.createElement('a'); link.href = url; link.download = 'woact-page-' + page.id + '.json'; link.click(); URL.revokeObjectURL(url); }
     function aiJson() {
       return {
@@ -143,7 +158,7 @@
     if (!data) return h('div', { className: 'woact-page-loading' }, 'در حال بارگذاری صفحه‌ساز…');
     if (!page) return h('div', { className: 'woact-page-loading' }, h('span', { className: 'spinner is-active' }), h('p', null, notice ? notice.message : 'در حال بازکردن مستقیم محتوا در ویرایشگر Woact…'));
     var dynamicData = { site: config.site || {}, post: { title: page.title, excerpt: 'خلاصه نمونه صفحه', featuredImage: '' }, user: config.user || {}, widgets: config.widgetData || {} };
-    return h('div', { className: 'woact-page-builder' }, h('header', { className: 'woact-page-topbar' }, h('div', { className: 'woact-page-brand' }, h('b', null, 'W'), h('span', null, h('strong', null, 'Woact Page Builder'), h('small', null, 'Stage 5 · ' + data.version))), h('div', { className: 'woact-current-document' }, h('strong', null, (page.postType === 'post' ? 'نوشته: ' : 'برگه: ') + page.title)), h('a', { href: page.editUrl, className: 'button' }, 'بازگشت به ویرایش وردپرس'), h(Devices, { value: device, change: setDevice }), h('div', { className: 'woact-page-actions' }, h('button', { disabled: !undo.current.length, onClick: function () { history('undo'); } }, '↶'), h('button', { disabled: !redo.current.length, onClick: function () { history('redo'); } }, '↷'), h('button', { onClick: exportJson }, 'JSON خروجی'), h('button', { onClick: exportAiJson, title: 'دانلود قرارداد، فهرست ویجت‌ها و سند فعلی برای طراحی با هوش مصنوعی' }, 'JSON برای هوش مصنوعی'), h('button', { onClick: function () { importRef.current.click(); } }, 'درون‌ریزی'), h('input', { ref: importRef, type: 'file', hidden: true, accept: '.json,application/json', onChange: importJson }), h('a', { href: page.viewUrl, target: '_blank', rel: 'noreferrer' }, 'مشاهده صفحه'), h('button', { disabled: !dirty || saving, onClick: function () { save(false); } }, saving ? 'ذخیره…' : 'ذخیره'), h('button', { className: 'is-primary', onClick: publish }, 'انتشار'))),
+    return h('div', { className: 'woact-page-builder' }, h('header', { className: 'woact-page-topbar' }, h('div', { className: 'woact-page-brand' }, h('b', null, 'W'), h('span', null, h('strong', null, 'Woact Page Builder'), h('small', null, 'Stage 5 · ' + data.version))), h('div', { className: 'woact-current-document' }, h('strong', null, (page.postType === 'post' ? 'نوشته: ' : 'برگه: ') + page.title)), h('a', { href: page.editUrl, className: 'button' }, 'بازگشت به ویرایش وردپرس'), h(Devices, { value: device, change: setDevice }), h('div', { className: 'woact-page-actions' }, h('button', { disabled: !undo.current.length, onClick: function () { history('undo'); } }, '↶'), h('button', { disabled: !redo.current.length, onClick: function () { history('redo'); } }, '↷'), h('button', { onClick: exportJson }, 'JSON خروجی'), h('button', { onClick: exportAiJson, title: 'دانلود قرارداد، فهرست ویجت‌ها و سند فعلی برای طراحی با هوش مصنوعی' }, 'JSON برای هوش مصنوعی'), h('button', { onClick: function () { importRef.current.click(); } }, 'درون‌ریزی'), h('input', { ref: importRef, type: 'file', hidden: true, accept: '.json,application/json', onChange: importJson }), h('a', { href: page.viewUrl, target: '_blank', rel: 'noreferrer' }, 'مشاهده صفحه'), h('button', { disabled: !dirty || saving, onClick: function () { save(false); } }, saving ? 'ذخیره…' : 'ذخیره'), h('button', { className: 'is-primary', disabled: saving, onClick: publish }, saving ? 'در حال ذخیره…' : 'انتشار'))),
       h('div', { className: 'woact-page-status' }, h('span', { className: 'is-live' }, '● بوم زنده React'), h('span', { className: dirty ? 'is-dirty' : 'is-saved' }, dirty ? 'تغییرات ذخیره‌نشده' : 'ذخیره شده'), h('span', null, 'Ctrl+C / Ctrl+V / Ctrl+Z')),
       h(Notice, { value: notice, close: function () { setNotice(null); } }), h('div', { className: 'woact-page-body' }, h(Palette, { manifest: data.manifest, document: page.draft, add: add, select: setSelected }), h(Canvas, { manifest: data.manifest, document: page.draft, selected: selected, select: setSelected, device: device, data: dynamicData, add: add, drop: drop, remove: remove, duplicate: duplicate }), h(Inspector, { manifest: data.manifest, page: page, document: page.draft, selected: selected, device: device, changeNode: changeNode, changeProp: changeProp, changeStyle: changeStyle, changeVisibility: changeVisibility, changePage: changePage, changeSetting: changeSetting }))
     );

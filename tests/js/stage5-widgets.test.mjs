@@ -53,3 +53,11 @@ test('legacy WordPress content with empty Woact revision meta is safe', () => {
   assert.match(pagesPhp, /is_array\(\$revisions\).*array_filter\(\$revisions, 'is_array'\)/s);
   assert.match(pagesRestPhp, /array_filter\(\(array\).*'is_array'\)/s);
 });
+
+test('page saves use the WordPress nonce middleware and cannot overlap', () => {
+  assert.doesNotMatch(editor, /apiFetch\.use\(apiFetch\.createNonceMiddleware/);
+  assert.match(editor, /saveInFlight = useRef\(null\)/);
+  assert.match(editor, /if \(saveInFlight\.current\) return saveInFlight\.current/);
+  assert.doesNotMatch(editor, /setTimeout\(function \(\) \{ save\(true\); \}, 12000\)/);
+  assert.match(editor, /\.catch\(function \(error\).*انتشار انجام نشد/s);
+});
