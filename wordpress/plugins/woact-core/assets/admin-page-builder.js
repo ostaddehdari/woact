@@ -138,7 +138,7 @@
       if (saveInFlight.current) return saveInFlight.current;
       setSaving(true);
       var request = apiFetch({ path: '/woact/v1/admin/pages/' + page.id, method: 'POST', data: { title: page.title, enabled: page.enabled, document: page.draft, revision: page.revision } })
-        .then(function (value) { setPage(clone(value)); setSaved(clone(value)); if (!silent) setNotice({ type: 'success', message: 'پیش‌نویس ذخیره شد.' }); return value; })
+        .then(function (value) { setPage(clone(value)); setSaved(clone(value)); if (!silent) setNotice({ type: value.conflictResolved ? 'warning' : 'success', message: value.conflictResolved ? 'نسخهٔ سرور در تاریخچه نگه‌داری و تغییرات جدید ذخیره شد.' : 'پیش‌نویس ذخیره شد.' }); return value; })
         .catch(function (error) { setNotice({ type: 'error', message: error.message || 'ذخیره انجام نشد.' }); throw error; })
         .finally(function () { saveInFlight.current = null; setSaving(false); });
       saveInFlight.current = request;

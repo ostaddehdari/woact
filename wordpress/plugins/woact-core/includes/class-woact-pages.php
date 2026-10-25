@@ -134,9 +134,8 @@ final class Woact_Pages
         if (!$current) {
             return new WP_Error('woact_page_missing', __('برگه پیدا نشد.', 'woact-core'), ['status' => 404]);
         }
-        if ($expected_revision !== '' && !hash_equals($current['revision'], $expected_revision)) {
-            return new WP_Error('woact_page_conflict', __('این صفحه در پنجرهٔ دیگری تغییر کرده است.', 'woact-core'), ['status' => 409, 'currentRevision' => $current['revision']]);
-        }
+        $conflict_resolved = $expected_revision !== '' && !hash_equals($current['revision'], $expected_revision);
+        if ($conflict_resolved) $this->archive_document($post_id, (array) $current['draft'], get_current_user_id(), 'conflict');
         $document = $this->sanitize_document((array) ($input['document'] ?? []));
         update_post_meta($post_id, self::META_DRAFT, $document);
         update_post_meta($post_id, self::META_ENABLED, !empty($input['enabled']) ? '1' : '0');
@@ -144,7 +143,20 @@ final class Woact_Pages
             wp_update_post(['ID' => $post_id, 'post_title' => sanitize_text_field((string) $input['title'])]);
         }
         clean_post_cache($post_id);
-        return $this->get($post_id);
+        $saved = $this->get($post_id);
+        if ($saved) $saved['conflictResolved'] = $conflict_resolved;
+        return $saved;
+    }
+
+    private function archive_document(int $post_id, array $document, int $user_id, string $reason = 'manual'): void
+    {
+        $revisions = get_post_meta($post_id, self::META_REVISIONS, true);
+        $revisions = is_array($revisions) ? array_values(array_filter($revisions, 'is_array')) : [];
+        array_unshift($revisions, [
+            'id' => wp_generate_uuid4(), 'createdAt' => time(), 'userId' => $user_id,
+            'reason' => sanitize_key($reason), 'document' => $this->sanitize_document($document),
+        ]);
+        update_post_meta($post_id, self::META_REVISIONS, array_slice($revisions, 0, 30));
     }
 
     public function publish(int $post_id, int $user_id)

@@ -79,6 +79,14 @@ test('invalid or Persian AI node ids produce stable revision tokens', () => {
   assert.doesNotMatch(pagesPhp, /'id' => \$this->clean_id\(\(string\) \(\$node\['id'\]/);
 });
 
+test('revision mismatch is archived and never blocks publishing with 409', () => {
+  assert.match(pagesPhp, /\$conflict_resolved = \$expected_revision/);
+  assert.match(pagesPhp, /archive_document\(\$post_id, \(array\) \$current\['draft'\]/);
+  assert.match(pagesPhp, /\$saved\['conflictResolved'\] = \$conflict_resolved/);
+  assert.doesNotMatch(pagesPhp, /WP_Error\('woact_page_conflict'/);
+  assert.match(editor, /نسخهٔ سرور در تاریخچه نگه‌داری/);
+});
+
 test('page saves use the WordPress nonce middleware and cannot overlap', () => {
   assert.doesNotMatch(editor, /apiFetch\.use\(apiFetch\.createNonceMiddleware/);
   assert.match(editor, /saveInFlight = useRef\(null\)/);
