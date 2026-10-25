@@ -193,9 +193,12 @@ final class Woact_Pages
 
     public function render_fallback(array $document, array $data = []): string
     {
-        $custom_css = $this->collect_custom_css((array) ($document['nodes'] ?? []));
+        $globals = (array) ($document['settings']['designSystem'] ?? []);
+        $custom_css = (string) ($globals['customCss'] ?? '') . "\n" . $this->collect_custom_css((array) ($document['nodes'] ?? []));
         $html = $custom_css !== '' ? '<style>' . $custom_css . '</style>' : '';
-        $html .= '<div class="woact-page-runtime" style="--woact-page-width:' . (int) ($document['settings']['contentWidth'] ?? 1180) . 'px;background:' . esc_attr((string) ($document['settings']['background'] ?? '#ffffff')) . '">';
+        $variables = ''; foreach ((array) ($globals['colors'] ?? []) as $item) $variables .= '--woact-color-' . sanitize_key((string) ($item['id'] ?? '')) . ':' . esc_attr((string) ($item['value'] ?? '')) . ';';
+        $html .= '<div class="woact-page-runtime" style="--woact-page-width:' . (int) ($document['settings']['contentWidth'] ?? 1180) . 'px;background:' . esc_attr((string) ($document['settings']['background'] ?? '#ffffff')) . ';' . $variables . '">';
+        $data['designSystem'] = $globals;
         foreach ((array) ($document['nodes'] ?? []) as $node) {
             $html .= $this->render_node((array) $node, $data);
         }
@@ -222,10 +225,14 @@ final class Woact_Pages
         if (!empty($style['direction'])) $css .= 'flex-direction:' . esc_attr((string) $style['direction']) . ';';
         if (!empty($style['borderWidth'])) $css .= 'border-style:solid;';
         $design = (array) ($node['design'] ?? []);
-        $css .= $this->design_css($design);
+        $globals = (array) ($data['designSystem'] ?? []);
+        $preset = $this->design_token((array) ($globals['styles'] ?? []), (string) ($design['globalStyle'] ?? ''));
+        $resolved_design = array_merge($preset ?: [], $design);
+        $css .= $this->design_css($resolved_design, $globals);
         $class = 'woact-page-node woact-page-node--' . esc_attr($type);
         if (!empty($design['entranceAnimation'])) $class .= ' woact-animate woact-' . sanitize_html_class((string) $design['entranceAnimation']);
         if (!empty($design['hoverAnimation'])) $class .= ' woact-hover-' . sanitize_html_class((string) $design['hoverAnimation']);
+        if (!empty($preset['className'])) $class .= ' ' . esc_attr((string) $preset['className']);
         if (!empty($design['cssClasses'])) $class .= ' ' . esc_attr((string) $design['cssClasses']);
         $html_id = !empty($design['cssId']) ? ' id="' . esc_attr((string) $design['cssId']) . '"' : '';
         $attributes = $this->design_attributes($design);
@@ -248,9 +255,15 @@ final class Woact_Pages
         return '<div' . $common . '>' . esc_html($text) . '</div>';
     }
 
-    private function design_css(array $design): string
+    private function design_css(array $design, array $globals = []): string
     {
         $css = '';
+        $color = $this->design_token((array) ($globals['colors'] ?? []), (string) ($design['colorToken'] ?? '')); if ($color) $css .= 'color:' . esc_attr((string) ($color['value'] ?? '')) . ';';
+        $background_token = $this->design_token((array) ($globals['colors'] ?? []), (string) ($design['backgroundToken'] ?? '')); if ($background_token) $css .= 'background-color:' . esc_attr((string) ($background_token['value'] ?? '')) . ';';
+        $spacing = $this->design_token((array) ($globals['spacing'] ?? []), (string) ($design['paddingToken'] ?? '')); if ($spacing) $css .= 'padding:' . (float) ($spacing['value'] ?? 0) . 'px;';
+        $radius = $this->design_token((array) ($globals['radii'] ?? []), (string) ($design['radiusToken'] ?? '')); if ($radius) $css .= 'border-radius:' . (float) ($radius['value'] ?? 0) . 'px;';
+        $shadow = $this->design_token((array) ($globals['shadows'] ?? []), (string) ($design['shadowToken'] ?? '')); if ($shadow) $css .= 'box-shadow:' . esc_attr((string) ($shadow['value'] ?? '')) . ';';
+        $typography = $this->design_token((array) ($globals['typography'] ?? []), (string) ($design['typographyToken'] ?? '')); if ($typography) $css .= 'font-family:' . esc_attr((string) ($typography['family'] ?? '')) . ';font-size:' . (float) ($typography['size'] ?? 0) . 'px;font-weight:' . (int) ($typography['weight'] ?? 400) . ';line-height:' . (float) ($typography['lineHeight'] ?? 1.5) . ';';
         foreach (['marginBox' => 'margin', 'paddingBox' => 'padding'] as $key => $property) {
             $box = (array) ($design[$key] ?? []); if (!$box) continue; $unit = in_array(($box['unit'] ?? ''), ['px', '%', 'em', 'rem', 'vw', 'vh'], true) ? $box['unit'] : 'px';
             $css .= $property . ':' . (float) ($box['top'] ?? 0) . $unit . ' ' . (float) ($box['right'] ?? 0) . $unit . ' ' . (float) ($box['bottom'] ?? 0) . $unit . ' ' . (float) ($box['left'] ?? 0) . $unit . ';';
@@ -262,6 +275,11 @@ final class Woact_Pages
         $mask = ['circle' => 'circle(50%)', 'ellipse' => 'ellipse(50% 40%)', 'triangle' => 'polygon(50% 0,100% 100%,0 100%)', 'diamond' => 'polygon(50% 0,100% 50%,50% 100%,0 50%)', 'hexagon' => 'polygon(25% 6%,75% 6%,100% 50%,75% 94%,25% 94%,0 50%)', 'blob' => 'polygon(46% 2%,86% 15%,100% 55%,76% 91%,33% 100%,5% 70%,8% 27%)']; if (!empty($mask[$design['maskShape'] ?? ''])) $css .= 'clip-path:' . $mask[$design['maskShape']] . ';';
         if (!empty($design['animationDuration'])) $css .= 'animation-duration:' . (int) $design['animationDuration'] . 'ms;'; if (!empty($design['animationDelay'])) $css .= 'animation-delay:' . (int) $design['animationDelay'] . 'ms;';
         return $css;
+    }
+
+    private function design_token(array $items, string $id): ?array
+    {
+        if ($id === '') return null; foreach ($items as $item) if (is_array($item) && ($item['id'] ?? '') === $id) return $item; return null;
     }
 
     private function design_attributes(array $design): string
@@ -302,6 +320,7 @@ final class Woact_Pages
                 'background' => $this->color((string) ($settings['background'] ?? '#ffffff'), '#ffffff'),
                 'className' => sanitize_html_class((string) ($settings['className'] ?? '')),
                 'hideTitle' => !empty($settings['hideTitle']),
+                'designSystem' => $this->sanitize_design_system((array) ($settings['designSystem'] ?? [])),
             ],
             'nodes' => $nodes ?: $this->blank_document()['nodes'],
         ];
@@ -384,7 +403,7 @@ final class Woact_Pages
         $out['cssId'] = sanitize_html_class((string) ($design['cssId'] ?? ''));
         $classes = preg_split('/\s+/', (string) ($design['cssClasses'] ?? ''), -1, PREG_SPLIT_NO_EMPTY) ?: [];
         $out['cssClasses'] = implode(' ', array_slice(array_filter(array_map('sanitize_html_class', $classes)), 0, 20));
-        foreach (['entranceAnimation', 'hoverAnimation', 'maskShape', 'maskSize', 'maskPosition', 'position'] as $key) {
+        foreach (['entranceAnimation', 'hoverAnimation', 'maskShape', 'maskSize', 'maskPosition', 'position', 'globalStyle', 'colorToken', 'backgroundToken', 'typographyToken'] as $key) {
             $out[$key] = sanitize_key((string) ($design[$key] ?? ''));
         }
         foreach (['animationDuration', 'animationDelay', 'zIndex', 'rotate', 'skewX', 'skewY'] as $key) {
@@ -405,6 +424,47 @@ final class Woact_Pages
         $css = preg_replace('/@(?:import|charset|namespace)|expression\s*\(|javascript\s*:|<\/?style/i', '', $css) ?: '';
         $out['customCss'] = substr($css, 0, 10000);
         return $out;
+    }
+
+    private function sanitize_design_system(array $system): array
+    {
+        $defaults = $this->default_design_system();
+        $out = ['colors' => [], 'typography' => [], 'spacing' => [], 'radii' => [], 'shadows' => [], 'styles' => []];
+        foreach (array_keys($out) as $group) {
+            $items = is_array($system[$group] ?? null) ? $system[$group] : $defaults[$group];
+            foreach (array_slice($items, 0, 100) as $item) {
+                if (!is_array($item)) continue;
+                $clean = [];
+                $key_map = ['lineheight' => 'lineHeight', 'colortoken' => 'colorToken', 'backgroundtoken' => 'backgroundToken', 'paddingtoken' => 'paddingToken', 'radiustoken' => 'radiusToken', 'shadowtoken' => 'shadowToken', 'classname' => 'className'];
+                foreach ($item as $key => $value) {
+                    $key = sanitize_key((string) $key);
+                    $key = $key_map[$key] ?? $key;
+                    if ($key === 'value' && $group === 'colors') $clean[$key] = $this->color((string) $value, '#000000');
+                    elseif (in_array($key, ['size', 'weight', 'lineHeight', 'value'], true) && is_numeric($value)) $clean[$key] = (float) $value;
+                    else $clean[$key] = sanitize_text_field((string) $value);
+                }
+                $clean['id'] = sanitize_key((string) ($clean['id'] ?? ''));
+                if ($clean['id'] !== '') $out[$group][] = $clean;
+            }
+        }
+        $breakpoints = (array) ($system['breakpoints'] ?? $defaults['breakpoints']);
+        $out['breakpoints'] = ['tablet' => max(768, min(1440, (int) ($breakpoints['tablet'] ?? 1024))), 'mobile' => max(320, min(1023, (int) ($breakpoints['mobile'] ?? 767)))];
+        $css = sanitize_textarea_field((string) ($system['customCss'] ?? ''));
+        $out['customCss'] = substr((string) (preg_replace('/@(?:import|charset|namespace)|expression\s*\(|javascript\s*:|<\/?style/i', '', $css) ?: ''), 0, 20000);
+        return $out;
+    }
+
+    private function default_design_system(): array
+    {
+        return [
+            'colors' => [['id' => 'primary', 'name' => 'اصلی', 'value' => '#7c3aed'], ['id' => 'text', 'name' => 'متن', 'value' => '#17202a'], ['id' => 'surface', 'name' => 'سطح', 'value' => '#ffffff']],
+            'typography' => [['id' => 'body', 'name' => 'متن اصلی', 'family' => 'Vazirmatn', 'size' => 16, 'weight' => 400, 'lineHeight' => 1.8], ['id' => 'heading', 'name' => 'عنوان', 'family' => 'Vazirmatn', 'size' => 36, 'weight' => 800, 'lineHeight' => 1.3]],
+            'spacing' => [['id' => 'sm', 'name' => 'کم', 'value' => 8], ['id' => 'md', 'name' => 'متوسط', 'value' => 16], ['id' => 'lg', 'name' => 'زیاد', 'value' => 32]],
+            'radii' => [['id' => 'sm', 'name' => 'کم', 'value' => 6], ['id' => 'md', 'name' => 'متوسط', 'value' => 12]],
+            'shadows' => [['id' => 'card', 'name' => 'کارت', 'value' => '0 10px 30px #0f172a1a']],
+            'styles' => [['id' => 'card', 'name' => 'کارت عمومی', 'colorToken' => 'text', 'backgroundToken' => 'surface', 'paddingToken' => 'md', 'radiusToken' => 'md', 'shadowToken' => 'card', 'className' => 'woact-global-card']],
+            'breakpoints' => ['tablet' => 1024, 'mobile' => 767], 'customCss' => '',
+        ];
     }
 
     private function sanitize_prop_value($value, string $key, int $depth)
@@ -429,7 +489,7 @@ final class Woact_Pages
     {
         return [
             'schemaVersion' => self::SCHEMA_VERSION,
-            'settings' => ['contentWidth' => 1180, 'background' => '#ffffff', 'className' => '', 'hideTitle' => true],
+            'settings' => ['contentWidth' => 1180, 'background' => '#ffffff', 'className' => '', 'hideTitle' => true, 'designSystem' => $this->default_design_system()],
             'nodes' => [[
                 'id' => $this->new_id('section'), 'type' => 'section', 'props' => ['tag' => 'section'],
                 'style' => ['display' => 'flex', 'direction' => 'column', 'gap' => 16, 'padding' => 48, 'margin' => 0, 'background' => '#ffffff', 'color' => '#17202a', 'width' => 0, 'maxWidth' => 1180, 'minHeight' => 260, 'align' => 'center', 'justify' => 'center', 'fontSize' => 0, 'fontWeight' => 0, 'radius' => 0, 'borderWidth' => 0, 'borderColor' => '', 'shadow' => '', 'zIndex' => 0],

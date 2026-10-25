@@ -5,12 +5,14 @@
 
   var groups = {
     style: [
+      { id: 'globalTokens', label: 'توکن‌های سراسری', icon: 'admin-site-alt3', fields: [{ id: 'colorToken', label: 'رنگ متن سراسری', type: 'select', tokenSource: 'colors' }, { id: 'backgroundToken', label: 'رنگ پس‌زمینه سراسری', type: 'select', tokenSource: 'colors' }, { id: 'typographyToken', label: 'تایپوگرافی سراسری', type: 'select', tokenSource: 'typography' }] },
       { id: 'typography', label: 'تایپوگرافی', icon: 'editor-textcolor', fields: [{ id: 'typography', label: 'تایپوگرافی', type: 'typography' }, { id: 'color', label: 'رنگ متن', type: 'color' }] },
       { id: 'background', label: 'پس‌زمینه', icon: 'art', fields: [{ id: 'backgroundControl', label: 'نوع و تصویر پس‌زمینه', type: 'background' }] },
       { id: 'border', label: 'حاشیه و سایه', icon: 'admin-customizer', fields: [{ id: 'borderControl', label: 'حاشیه، گردی و سایه', type: 'border' }] },
     ],
     advanced: [
       { id: 'layout', label: 'طرح‌بندی', icon: 'align-wide', fields: [
+        { id: 'globalStyle', label: 'استایل ذخیره‌شده', type: 'select', tokenSource: 'styles' },
         { id: 'marginBox', label: 'فاصله بیرونی', type: 'dimensions' }, { id: 'paddingBox', label: 'فاصله داخلی', type: 'dimensions' },
         { id: 'widthUnit', label: 'عرض', type: 'unit', units: ['px', '%', 'vw'] }, { id: 'minHeightUnit', label: 'حداقل ارتفاع', type: 'unit', units: ['px', 'vh'] },
         { id: 'position', label: 'موقعیت', type: 'select', options: [{ value: '', label: 'پیش‌فرض' }, 'relative', 'absolute', 'fixed', 'sticky'] },
@@ -43,7 +45,9 @@
   function defaults() { return { cssId: '', cssClasses: '', attributes: [], customCss: '', entranceAnimation: '', animationDuration: 600, animationDelay: 0, hoverAnimation: '', maskShape: '', maskSize: 'cover', maskPosition: 'center' }; }
   function Accordion(props) {
     var body = props.group.custom === 'responsive' ? props.responsive() : (props.group.fields || []).map(function (field) {
-      return h('label', { className: 'woact-design-field', key: field.id }, h('span', null, field.label), window.WoactControls.render(field, props.values[field.id], function (value) { props.change(field.id, value); }, { values: props.values, device: props.device }));
+      var schema = Object.assign({}, field);
+      if (field.tokenSource) schema.options = [{ value: '', label: 'بدون اتصال' }].concat((((props.globals || {})[field.tokenSource]) || []).map(function (item) { return { value: item.id, label: item.name || item.id }; }));
+      return h('label', { className: 'woact-design-field', key: field.id }, h('span', null, field.label), window.WoactControls.render(schema, props.values[field.id], function (value) { props.change(field.id, value); }, { values: props.values, device: props.device }));
     });
     return h('details', { className: 'woact-design-section', open: props.index === 0 }, h('summary', null, h('span', { className: 'dashicons dashicons-' + props.group.icon }), h('strong', null, props.group.label), h('span', { className: 'dashicons dashicons-arrow-down-alt2' })), h('div', { className: 'woact-design-section__body' }, body));
   }

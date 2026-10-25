@@ -10,8 +10,12 @@
   function unit(value, fallback) { return value && typeof value === 'object' ? String(Number(value.value || 0)) + (value.unit || 'px') : fallback; }
   function box(value) { if (!value || typeof value !== 'object') return undefined; var u = value.unit || 'px'; return [value.top, value.right, value.bottom, value.left].map(function (n) { return Number(n || 0) + u; }).join(' '); }
   function gradient(value) { if (!value) return ''; return value.type === 'radial' ? 'radial-gradient(' + value.first + ',' + value.second + ')' : 'linear-gradient(' + Number(value.angle || 90) + 'deg,' + value.first + ',' + value.second + ')'; }
-  function designStyle(node) {
-    var d = node.design || {}, out = {};
+  function token(list, id) { return (list || []).find(function (item) { return item.id === id; }) || null; }
+  function designStyle(node, globals) {
+    globals = globals || {}; var local = node.design || {}, preset = token(globals.styles, local.globalStyle) || {}, d = Object.assign({}, preset, local), out = {};
+    var colorToken = token(globals.colors, d.colorToken), backgroundToken = token(globals.colors, d.backgroundToken), typographyToken = token(globals.typography, d.typographyToken), spacingToken = token(globals.spacing, d.paddingToken), radiusToken = token(globals.radii, d.radiusToken), shadowToken = token(globals.shadows, d.shadowToken);
+    if (colorToken) out.color = colorToken.value; if (backgroundToken) out.backgroundColor = backgroundToken.value; if (spacingToken) out.padding = Number(spacingToken.value || 0) + 'px'; if (radiusToken) out.borderRadius = Number(radiusToken.value || 0) + 'px'; if (shadowToken) out.boxShadow = shadowToken.value;
+    if (typographyToken) { out.fontFamily = typographyToken.family || undefined; out.fontSize = Number(typographyToken.size || 0) + 'px'; out.fontWeight = typographyToken.weight || undefined; out.lineHeight = typographyToken.lineHeight || undefined; }
     if (d.marginBox) out.margin = box(d.marginBox); if (d.paddingBox) out.padding = box(d.paddingBox);
     if (d.widthUnit) out.width = unit(d.widthUnit); if (d.minHeightUnit) out.minHeight = unit(d.minHeightUnit);
     if (d.position) out.position = d.position; if (d.zIndex !== undefined && d.zIndex !== '') out.zIndex = Number(d.zIndex);
@@ -23,7 +27,7 @@
     if (d.animationDuration) out.animationDuration = Number(d.animationDuration) + 'ms'; if (d.animationDelay) out.animationDelay = Number(d.animationDelay) + 'ms';
     return out;
   }
-  function resolvedStyle(node, device) {
+  function resolvedStyle(node, device, globals) {
     var base = node.style || {};
     var override = device === 'desktop' ? {} : ((node.responsive || {})[device] || {});
     var s = Object.assign({}, base, override);
@@ -39,7 +43,7 @@
       borderRadius: s.radius ? s.radius + 'px' : undefined, borderWidth: s.borderWidth ? s.borderWidth + 'px' : undefined,
       borderColor: s.borderColor || undefined, borderStyle: s.borderWidth ? 'solid' : undefined,
       boxShadow: s.shadow || undefined, zIndex: s.zIndex || undefined,
-    }, designStyle(node));
+    }, designStyle(node, globals));
   }
   function get(source, data) {
     if (!source) return undefined;
@@ -54,8 +58,8 @@
     var _active = useState(0), active = _active[0], setActive = _active[1];
     if (!visible(node, device)) return null;
     var dynamic = get(node.dynamic, props.data);
-    var style = resolvedStyle(node, device);
-    var design = node.design || {}, customClass = String(design.cssClasses || '').replace(/[^a-zA-Z0-9_-]+/g, ' ').trim();
+    var style = resolvedStyle(node, device, (props.data || {}).designSystem || {});
+    var design = node.design || {}, preset = token(((props.data || {}).designSystem || {}).styles, design.globalStyle) || {}, customClass = (String(preset.className || '') + ' ' + String(design.cssClasses || '')).replace(/[^a-zA-Z0-9_-]+/g, ' ').trim();
     var common = { id: design.cssId || undefined, className: 'woact-page-node woact-page-node--' + node.type + (design.entranceAnimation ? ' woact-animate woact-' + design.entranceAnimation : '') + (design.hoverAnimation ? ' woact-hover-' + design.hoverAnimation : '') + (customClass ? ' ' + customClass : ''), style: style, 'data-woact-node': node.id };
     (Array.isArray(design.attributes) ? design.attributes : []).forEach(function (item) { var key = String(item.key || '').toLowerCase(); if (/^(data|aria)-[a-z0-9_-]+$/.test(key) || ['title', 'role', 'tabindex'].indexOf(key) !== -1) common[key === 'tabindex' ? 'tabIndex' : key] = String(item.value || ''); });
     var widgets = (props.data && props.data.widgets) || {};
@@ -134,9 +138,12 @@
     var document = props.document || {};
     var settings = document.settings || {};
     function customCss(nodes) { return (nodes || []).map(function (node) { var css = String((node.design || {}).customCss || ''); var selector = '[data-woact-node="' + String(node.id || '').replace(/[^a-zA-Z0-9_-]/g, '') + '"]'; return (css ? css.replace(/selector/g, selector) : '') + customCss(node.children || []); }).join('\n'); }
-    var css = customCss(document.nodes || []);
-    return h('div', { className: 'woact-page-runtime ' + (settings.className || ''), style: { '--woact-page-width': (settings.contentWidth || 1180) + 'px', background: settings.background || '#fff' }, 'data-device': props.device || 'desktop' }, css ? h('style', { dangerouslySetInnerHTML: { __html: css } }) : null,
-      (document.nodes || []).map(function (node) { return h(Node, { key: node.id, node: node, device: props.device || 'desktop', data: props.data || {} }); })
+    var globals = settings.designSystem || {}, css = customCss(document.nodes || []), variables = { '--woact-page-width': (settings.contentWidth || 1180) + 'px', background: settings.background || '#fff' };
+    (globals.colors || []).forEach(function (item) { variables['--woact-color-' + item.id] = item.value; }); (globals.spacing || []).forEach(function (item) { variables['--woact-space-' + item.id] = Number(item.value || 0) + 'px'; }); (globals.radii || []).forEach(function (item) { variables['--woact-radius-' + item.id] = Number(item.value || 0) + 'px'; });
+    var runtimeData = Object.assign({}, props.data || {}, { designSystem: globals });
+    var globalCss = String(globals.customCss || '');
+    return h('div', { className: 'woact-page-runtime ' + (settings.className || ''), style: variables, 'data-device': props.device || 'desktop' }, (css || globalCss) ? h('style', { dangerouslySetInnerHTML: { __html: globalCss + '\n' + css } }) : null,
+      (document.nodes || []).map(function (node) { return h(Node, { key: node.id, node: node, device: props.device || 'desktop', data: runtimeData }); })
     );
   }
   window.WoactPageRenderer = { Page: Page, Node: Node, styleOf: resolvedStyle };

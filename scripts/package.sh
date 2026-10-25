@@ -3,7 +3,7 @@ set -Eeuo pipefail
 
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 build_dir="$project_root/build"
-version="0.8.0-rc1"
+version="0.9.0-rc1"
 
 rm -rf "$build_dir"
 mkdir -p "$build_dir/package/wp-content/themes" "$build_dir/package/wp-content/plugins"
@@ -22,6 +22,7 @@ cp -R "$project_root/wordpress/plugins/woact-core" "$build_dir/package/wp-conten
   cd "$build_dir/package"
   zip -qr "$build_dir/woact-stage5-$version.zip" wp-content
   zip -qr "$build_dir/woact-stage3-design-$version.zip" wp-content
+  zip -qr "$build_dir/woact-stage4-global-design-$version.zip" wp-content
 )
 
 printf 'Packages created in %s\n' "$build_dir"
