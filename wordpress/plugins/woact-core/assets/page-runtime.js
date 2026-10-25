@@ -7,13 +7,29 @@
   function visible(node, device) {
     return !node.visibility || node.visibility[device || 'desktop'] !== false;
   }
+  function unit(value, fallback) { return value && typeof value === 'object' ? String(Number(value.value || 0)) + (value.unit || 'px') : fallback; }
+  function box(value) { if (!value || typeof value !== 'object') return undefined; var u = value.unit || 'px'; return [value.top, value.right, value.bottom, value.left].map(function (n) { return Number(n || 0) + u; }).join(' '); }
+  function gradient(value) { if (!value) return ''; return value.type === 'radial' ? 'radial-gradient(' + value.first + ',' + value.second + ')' : 'linear-gradient(' + Number(value.angle || 90) + 'deg,' + value.first + ',' + value.second + ')'; }
+  function designStyle(node) {
+    var d = node.design || {}, out = {};
+    if (d.marginBox) out.margin = box(d.marginBox); if (d.paddingBox) out.padding = box(d.paddingBox);
+    if (d.widthUnit) out.width = unit(d.widthUnit); if (d.minHeightUnit) out.minHeight = unit(d.minHeightUnit);
+    if (d.position) out.position = d.position; if (d.zIndex !== undefined && d.zIndex !== '') out.zIndex = Number(d.zIndex);
+    var t = d.typography || {}; if (t.family) out.fontFamily = t.family; if (t.size) out.fontSize = unit(t.size); if (t.weight) out.fontWeight = t.weight; if (t.lineHeight) out.lineHeight = unit(t.lineHeight); if (t.letterSpacing) out.letterSpacing = unit(t.letterSpacing); if (t.transform) out.textTransform = t.transform;
+    var bg = d.backgroundControl || {}; if (bg.type === 'gradient' && bg.gradient) out.background = gradient(bg.gradient); else { if (bg.color) out.backgroundColor = bg.color; if (bg.image) { out.backgroundImage = 'url("' + String(bg.image).replace(/["()]/g, '') + '")'; out.backgroundSize = bg.size || 'cover'; out.backgroundPosition = bg.position || 'center center'; } }
+    var b = d.borderControl || {}; if (b.type && b.type !== 'none') { out.borderStyle = b.type; out.borderWidth = box(b.width); out.borderColor = b.color || undefined; } if (b.radius) out.borderRadius = box(b.radius); if (b.shadow) out.boxShadow = (b.shadow.inset ? 'inset ' : '') + [b.shadow.x, b.shadow.y, b.shadow.blur, b.shadow.spread].map(function (n) { return Number(n || 0) + 'px'; }).join(' ') + ' ' + (b.shadow.color || '#00000033');
+    var tx = unit(d.translateX, '0px'), ty = unit(d.translateY, '0px'), scale = d.scale === undefined || d.scale === '' ? 1 : Number(d.scale), rotate = Number(d.rotate || 0), skewX = Number(d.skewX || 0), skewY = Number(d.skewY || 0); if (tx !== '0px' || ty !== '0px' || scale !== 1 || rotate || skewX || skewY) out.transform = 'translate(' + tx + ',' + ty + ') scale(' + scale + ') rotate(' + rotate + 'deg) skew(' + skewX + 'deg,' + skewY + 'deg)';
+    var masks = { circle: 'circle(50%)', ellipse: 'ellipse(50% 40%)', triangle: 'polygon(50% 0,100% 100%,0 100%)', diamond: 'polygon(50% 0,100% 50%,50% 100%,0 50%)', hexagon: 'polygon(25% 6%,75% 6%,100% 50%,75% 94%,25% 94%,0 50%)', blob: 'polygon(46% 2%,86% 15%,100% 55%,76% 91%,33% 100%,5% 70%,8% 27%)' }; if (masks[d.maskShape]) { out.clipPath = masks[d.maskShape]; out.WebkitClipPath = masks[d.maskShape]; }
+    if (d.animationDuration) out.animationDuration = Number(d.animationDuration) + 'ms'; if (d.animationDelay) out.animationDelay = Number(d.animationDelay) + 'ms';
+    return out;
+  }
   function resolvedStyle(node, device) {
     var base = node.style || {};
     var override = device === 'desktop' ? {} : ((node.responsive || {})[device] || {});
     var s = Object.assign({}, base, override);
     var justify = { start: 'flex-start', center: 'center', end: 'flex-end', between: 'space-between' };
     var align = { start: 'flex-start', center: 'center', end: 'flex-end', stretch: 'stretch' };
-    return {
+    return Object.assign({
       display: s.display || undefined, flexDirection: s.direction || undefined, gap: s.gap !== undefined ? s.gap + 'px' : undefined,
       padding: s.padding !== undefined ? s.padding + 'px' : undefined, margin: s.margin !== undefined ? s.margin + 'px' : undefined,
       background: s.background || undefined, color: s.color || undefined, width: s.width ? s.width + 'px' : undefined,
@@ -23,7 +39,7 @@
       borderRadius: s.radius ? s.radius + 'px' : undefined, borderWidth: s.borderWidth ? s.borderWidth + 'px' : undefined,
       borderColor: s.borderColor || undefined, borderStyle: s.borderWidth ? 'solid' : undefined,
       boxShadow: s.shadow || undefined, zIndex: s.zIndex || undefined,
-    };
+    }, designStyle(node));
   }
   function get(source, data) {
     if (!source) return undefined;
@@ -39,7 +55,9 @@
     if (!visible(node, device)) return null;
     var dynamic = get(node.dynamic, props.data);
     var style = resolvedStyle(node, device);
-    var common = { className: 'woact-page-node woact-page-node--' + node.type, style: style, 'data-woact-node': node.id };
+    var design = node.design || {}, customClass = String(design.cssClasses || '').replace(/[^a-zA-Z0-9_-]+/g, ' ').trim();
+    var common = { id: design.cssId || undefined, className: 'woact-page-node woact-page-node--' + node.type + (design.entranceAnimation ? ' woact-animate woact-' + design.entranceAnimation : '') + (design.hoverAnimation ? ' woact-hover-' + design.hoverAnimation : '') + (customClass ? ' ' + customClass : ''), style: style, 'data-woact-node': node.id };
+    (Array.isArray(design.attributes) ? design.attributes : []).forEach(function (item) { var key = String(item.key || '').toLowerCase(); if (/^(data|aria)-[a-z0-9_-]+$/.test(key) || ['title', 'role', 'tabindex'].indexOf(key) !== -1) common[key === 'tabindex' ? 'tabIndex' : key] = String(item.value || ''); });
     var widgets = (props.data && props.data.widgets) || {};
     var children = (node.children || []).map(function (child) { return h(Node, { key: child.id, node: child, device: device, data: props.data }); });
     if (node.type === 'section') return h(['section', 'header', 'footer', 'main', 'article', 'aside'].indexOf(p.tag) >= 0 ? p.tag : 'section', common, children);
@@ -115,7 +133,9 @@
   function Page(props) {
     var document = props.document || {};
     var settings = document.settings || {};
-    return h('div', { className: 'woact-page-runtime ' + (settings.className || ''), style: { '--woact-page-width': (settings.contentWidth || 1180) + 'px', background: settings.background || '#fff' }, 'data-device': props.device || 'desktop' },
+    function customCss(nodes) { return (nodes || []).map(function (node) { var css = String((node.design || {}).customCss || ''); var selector = '[data-woact-node="' + String(node.id || '').replace(/[^a-zA-Z0-9_-]/g, '') + '"]'; return (css ? css.replace(/selector/g, selector) : '') + customCss(node.children || []); }).join('\n'); }
+    var css = customCss(document.nodes || []);
+    return h('div', { className: 'woact-page-runtime ' + (settings.className || ''), style: { '--woact-page-width': (settings.contentWidth || 1180) + 'px', background: settings.background || '#fff' }, 'data-device': props.device || 'desktop' }, css ? h('style', { dangerouslySetInnerHTML: { __html: css } }) : null,
       (document.nodes || []).map(function (node) { return h(Node, { key: node.id, node: node, device: props.device || 'desktop', data: props.data || {} }); })
     );
   }

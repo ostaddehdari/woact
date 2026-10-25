@@ -44,6 +44,13 @@ final class Woact_Control_Schema
                 ['id' => 'border', 'label' => 'حاشیه و سایه', 'type' => 'border', 'states' => ['normal', 'hover']],
             ],
             'advanced' => [
+                ['id' => 'layout', 'label' => 'طرح‌بندی', 'type' => 'dimensions', 'responsive' => true],
+                ['id' => 'motion', 'label' => 'موشن افکت', 'type' => 'select'],
+                ['id' => 'transform', 'label' => 'تبدیل', 'type' => 'unit', 'responsive' => true],
+                ['id' => 'background', 'label' => 'پس‌زمینه', 'type' => 'background', 'states' => ['normal', 'hover']],
+                ['id' => 'border', 'label' => 'حاشیه', 'type' => 'border', 'states' => ['normal', 'hover']],
+                ['id' => 'mask', 'label' => 'ماسک', 'type' => 'select'],
+                ['id' => 'responsive', 'label' => 'واکنش‌گرا', 'type' => 'switch'],
                 ['id' => 'cssId', 'label' => 'شناسه CSS', 'type' => 'text'],
                 ['id' => 'cssClasses', 'label' => 'کلاس‌های CSS', 'type' => 'text'],
                 ['id' => 'attributes', 'label' => 'ویژگی‌ها', 'type' => 'repeater', 'itemDefaults' => ['key' => '', 'value' => '']],

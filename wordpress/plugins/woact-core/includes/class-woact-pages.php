@@ -193,7 +193,9 @@ final class Woact_Pages
 
     public function render_fallback(array $document, array $data = []): string
     {
-        $html = '<div class="woact-page-runtime" style="--woact-page-width:' . (int) ($document['settings']['contentWidth'] ?? 1180) . 'px;background:' . esc_attr((string) ($document['settings']['background'] ?? '#ffffff')) . '">';
+        $custom_css = $this->collect_custom_css((array) ($document['nodes'] ?? []));
+        $html = $custom_css !== '' ? '<style>' . $custom_css . '</style>' : '';
+        $html .= '<div class="woact-page-runtime" style="--woact-page-width:' . (int) ($document['settings']['contentWidth'] ?? 1180) . 'px;background:' . esc_attr((string) ($document['settings']['background'] ?? '#ffffff')) . '">';
         foreach ((array) ($document['nodes'] ?? []) as $node) {
             $html .= $this->render_node((array) $node, $data);
         }
@@ -219,23 +221,57 @@ final class Woact_Pages
         if (!empty($style['fontWeight'])) $css .= 'font-weight:' . (int) $style['fontWeight'] . ';';
         if (!empty($style['direction'])) $css .= 'flex-direction:' . esc_attr((string) $style['direction']) . ';';
         if (!empty($style['borderWidth'])) $css .= 'border-style:solid;';
+        $design = (array) ($node['design'] ?? []);
+        $css .= $this->design_css($design);
         $class = 'woact-page-node woact-page-node--' . esc_attr($type);
+        if (!empty($design['entranceAnimation'])) $class .= ' woact-animate woact-' . sanitize_html_class((string) $design['entranceAnimation']);
+        if (!empty($design['hoverAnimation'])) $class .= ' woact-hover-' . sanitize_html_class((string) $design['hoverAnimation']);
+        if (!empty($design['cssClasses'])) $class .= ' ' . esc_attr((string) $design['cssClasses']);
+        $html_id = !empty($design['cssId']) ? ' id="' . esc_attr((string) $design['cssId']) . '"' : '';
+        $attributes = $this->design_attributes($design);
+        $common = $html_id . ' class="' . $class . '" data-woact-node="' . esc_attr((string) ($node['id'] ?? '')) . '" style="' . $css . '"' . $attributes;
         $dynamic = $this->dynamic_value((string) ($node['dynamic'] ?? ''), $data);
         if (in_array($type, self::CONTAINERS, true)) {
             $tag = $type === 'section' && in_array(($props['tag'] ?? ''), ['section', 'header', 'footer', 'main', 'article', 'aside'], true) ? $props['tag'] : 'div';
             $inner = '';
             foreach ((array) ($node['children'] ?? []) as $child) $inner .= $this->render_node((array) $child, $data);
-            return '<' . $tag . ' class="' . $class . '" style="' . $css . '">' . $inner . '</' . $tag . '>';
+            return '<' . $tag . $common . '>' . $inner . '</' . $tag . '>';
         }
-        if ($type === 'heading') { $tag = preg_match('/^h[1-6]$/', (string) ($props['level'] ?? '')) ? $props['level'] : 'h2'; return '<' . $tag . ' class="' . $class . '" style="' . $css . '">' . esc_html((string) ($dynamic ?? $props['text'] ?? '')) . '</' . $tag . '>'; }
-        if ($type === 'text') return '<p class="' . $class . '" style="' . $css . '">' . esc_html((string) ($dynamic ?? $props['text'] ?? '')) . '</p>';
-        if ($type === 'button') return '<a class="' . $class . ' is-' . esc_attr((string) ($props['variant'] ?? 'primary')) . '" style="' . $css . '" href="' . esc_url((string) ($props['url'] ?? '#')) . '">' . esc_html((string) ($props['label'] ?? '')) . '</a>';
-        if ($type === 'image') { $src = (string) ($dynamic ?? $props['url'] ?? ''); return '<figure class="' . $class . '" style="' . $css . '">' . ($src ? '<img src="' . esc_url($src) . '" alt="' . esc_attr((string) ($props['alt'] ?? '')) . '">' : '') . '</figure>'; }
-        if ($type === 'html') return '<div class="' . $class . '" style="' . $css . '">' . wp_kses_post((string) ($props['html'] ?? '')) . '</div>';
-        if ($type === 'divider') return '<hr class="' . $class . '" style="' . $css . '">';
-        if ($type === 'spacer') return '<div class="' . $class . '" style="' . $css . 'height:' . (int) ($props['height'] ?? 40) . 'px"></div>';
+        if ($type === 'heading') { $tag = preg_match('/^h[1-6]$/', (string) ($props['level'] ?? '')) ? $props['level'] : 'h2'; return '<' . $tag . $common . '>' . esc_html((string) ($dynamic ?? $props['text'] ?? '')) . '</' . $tag . '>'; }
+        if ($type === 'text') return '<p' . $common . '>' . esc_html((string) ($dynamic ?? $props['text'] ?? '')) . '</p>';
+        if ($type === 'button') return '<a' . str_replace('class="' . $class . '"', 'class="' . $class . ' is-' . esc_attr((string) ($props['variant'] ?? 'primary')) . '"', $common) . ' href="' . esc_url((string) ($props['url'] ?? '#')) . '">' . esc_html((string) ($props['label'] ?? '')) . '</a>';
+        if ($type === 'image') { $src = (string) ($dynamic ?? $props['url'] ?? ''); return '<figure' . $common . '>' . ($src ? '<img src="' . esc_url($src) . '" alt="' . esc_attr((string) ($props['alt'] ?? '')) . '">' : '') . '</figure>'; }
+        if ($type === 'html') return '<div' . $common . '>' . wp_kses_post((string) ($props['html'] ?? '')) . '</div>';
+        if ($type === 'divider') return '<hr' . $common . '>';
+        if ($type === 'spacer') return '<div' . str_replace('style="' . $css . '"', 'style="' . $css . 'height:' . (int) ($props['height'] ?? 40) . 'px"', $common) . '></div>';
         $text = (string) ($props['icon'] ?? $props['text'] ?? '');
-        return '<div class="' . $class . '" style="' . $css . '">' . esc_html($text) . '</div>';
+        return '<div' . $common . '>' . esc_html($text) . '</div>';
+    }
+
+    private function design_css(array $design): string
+    {
+        $css = '';
+        foreach (['marginBox' => 'margin', 'paddingBox' => 'padding'] as $key => $property) {
+            $box = (array) ($design[$key] ?? []); if (!$box) continue; $unit = in_array(($box['unit'] ?? ''), ['px', '%', 'em', 'rem', 'vw', 'vh'], true) ? $box['unit'] : 'px';
+            $css .= $property . ':' . (float) ($box['top'] ?? 0) . $unit . ' ' . (float) ($box['right'] ?? 0) . $unit . ' ' . (float) ($box['bottom'] ?? 0) . $unit . ' ' . (float) ($box['left'] ?? 0) . $unit . ';';
+        }
+        foreach (['widthUnit' => 'width', 'minHeightUnit' => 'min-height'] as $key => $property) { $value = (array) ($design[$key] ?? []); if ($value) $css .= $property . ':' . (float) ($value['value'] ?? 0) . esc_attr((string) ($value['unit'] ?? 'px')) . ';'; }
+        if (!empty($design['position'])) $css .= 'position:' . esc_attr((string) $design['position']) . ';';
+        if (isset($design['zIndex'])) $css .= 'z-index:' . (int) $design['zIndex'] . ';';
+        $background = (array) ($design['backgroundControl'] ?? []); if (!empty($background['color'])) $css .= 'background-color:' . esc_attr((string) $background['color']) . ';'; if (!empty($background['image'])) $css .= 'background-image:url(' . esc_url((string) $background['image']) . ');background-size:' . esc_attr((string) ($background['size'] ?? 'cover')) . ';';
+        $mask = ['circle' => 'circle(50%)', 'ellipse' => 'ellipse(50% 40%)', 'triangle' => 'polygon(50% 0,100% 100%,0 100%)', 'diamond' => 'polygon(50% 0,100% 50%,50% 100%,0 50%)', 'hexagon' => 'polygon(25% 6%,75% 6%,100% 50%,75% 94%,25% 94%,0 50%)', 'blob' => 'polygon(46% 2%,86% 15%,100% 55%,76% 91%,33% 100%,5% 70%,8% 27%)']; if (!empty($mask[$design['maskShape'] ?? ''])) $css .= 'clip-path:' . $mask[$design['maskShape']] . ';';
+        if (!empty($design['animationDuration'])) $css .= 'animation-duration:' . (int) $design['animationDuration'] . 'ms;'; if (!empty($design['animationDelay'])) $css .= 'animation-delay:' . (int) $design['animationDelay'] . 'ms;';
+        return $css;
+    }
+
+    private function design_attributes(array $design): string
+    {
+        $html = ''; foreach ((array) ($design['attributes'] ?? []) as $attribute) { if (!is_array($attribute)) continue; $key = (string) ($attribute['key'] ?? ''); if (!preg_match('/^(data|aria)-[a-z0-9_-]+$/', $key) && !in_array($key, ['title', 'role', 'tabindex'], true)) continue; $html .= ' ' . esc_attr($key) . '="' . esc_attr((string) ($attribute['value'] ?? '')) . '"'; } return $html;
+    }
+
+    private function collect_custom_css(array $nodes): string
+    {
+        $css = ''; foreach ($nodes as $node) { if (!is_array($node)) continue; $selector = '[data-woact-node="' . $this->clean_id((string) ($node['id'] ?? '')) . '"]'; $custom = (string) ($node['design']['customCss'] ?? ''); if ($custom !== '') $css .= str_replace('selector', $selector, $custom) . "\n"; $css .= $this->collect_custom_css((array) ($node['children'] ?? [])); } return $css;
     }
 
     private function dynamic_value(string $path, array $data)
@@ -304,6 +340,7 @@ final class Woact_Pages
                 'tablet' => $this->sanitize_style((array) ($node['responsive']['tablet'] ?? []), true),
                 'mobile' => $this->sanitize_style((array) ($node['responsive']['mobile'] ?? []), true),
             ],
+            'design' => $this->sanitize_design((array) ($node['design'] ?? [])),
             'visibility' => [
                 'desktop' => !isset($node['visibility']['desktop']) || !empty($node['visibility']['desktop']),
                 'tablet' => !isset($node['visibility']['tablet']) || !empty($node['visibility']['tablet']),
@@ -338,6 +375,35 @@ final class Woact_Pages
         if (array_key_exists('shadow', $style)) {
             $out['shadow'] = sanitize_text_field((string) $style['shadow']);
         }
+        return $out;
+    }
+
+    private function sanitize_design(array $design): array
+    {
+        $out = [];
+        $out['cssId'] = sanitize_html_class((string) ($design['cssId'] ?? ''));
+        $classes = preg_split('/\s+/', (string) ($design['cssClasses'] ?? ''), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $out['cssClasses'] = implode(' ', array_slice(array_filter(array_map('sanitize_html_class', $classes)), 0, 20));
+        foreach (['entranceAnimation', 'hoverAnimation', 'maskShape', 'maskSize', 'maskPosition', 'position'] as $key) {
+            $out[$key] = sanitize_key((string) ($design[$key] ?? ''));
+        }
+        foreach (['animationDuration', 'animationDelay', 'zIndex', 'rotate', 'skewX', 'skewY'] as $key) {
+            $out[$key] = max(-9999, min(9999, (int) ($design[$key] ?? 0)));
+        }
+        $out['scale'] = max(0, min(3, (float) ($design['scale'] ?? 1)));
+        foreach (['marginBox', 'paddingBox', 'widthUnit', 'minHeightUnit', 'translateX', 'translateY', 'typography', 'backgroundControl', 'borderControl'] as $key) {
+            $out[$key] = $this->sanitize_prop_value($design[$key] ?? [], $key, 0);
+        }
+        $out['attributes'] = [];
+        foreach (array_slice((array) ($design['attributes'] ?? []), 0, 30) as $attribute) {
+            if (!is_array($attribute)) continue;
+            $key = strtolower(sanitize_key((string) ($attribute['key'] ?? '')));
+            if (!preg_match('/^(data|aria)-[a-z0-9_-]+$/', $key) && !in_array($key, ['title', 'role', 'tabindex'], true)) continue;
+            $out['attributes'][] = ['key' => $key, 'value' => sanitize_text_field((string) ($attribute['value'] ?? ''))];
+        }
+        $css = sanitize_textarea_field((string) ($design['customCss'] ?? ''));
+        $css = preg_replace('/@(?:import|charset|namespace)|expression\s*\(|javascript\s*:|<\/?style/i', '', $css) ?: '';
+        $out['customCss'] = substr($css, 0, 10000);
         return $out;
     }
 
