@@ -61,3 +61,13 @@ test('page saves use the WordPress nonce middleware and cannot overlap', () => {
   assert.doesNotMatch(editor, /setTimeout\(function \(\) \{ save\(true\); \}, 12000\)/);
   assert.match(editor, /\.catch\(function \(error\).*انتشار انجام نشد/s);
 });
+
+test('stage 1 editor shell matches the unified Elementor workflow', () => {
+  for (const feature of ['woact-unified-panel', 'woact-navigator-float', 'woact-history-float', 'woact-context-menu', 'woact-panel-switcher']) {
+    assert.match(editor, new RegExp(feature));
+  }
+  assert.match(editor, /\['content', 'محتوا'\].*\['style', 'استایل'\].*\['advanced', 'پیشرفته'\]/s);
+  assert.match(editor, /localStorage\.setItem\('woact-page-backup-'/);
+  assert.match(editor, /key === 's'/);
+  assert.match(editor, /key === 'p'/);
+});

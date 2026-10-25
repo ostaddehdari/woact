@@ -122,6 +122,7 @@ final class Woact_Pages
             'draft' => $draft, 'published' => $published,
             'revisions' => $revisions,
             'revision' => $this->revision_token($post_id, $draft),
+            'editUrl' => get_edit_post_link($post_id, 'raw'),
             'viewUrl' => get_permalink($post_id),
         ];
     }
