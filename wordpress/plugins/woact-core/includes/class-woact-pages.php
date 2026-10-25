@@ -505,7 +505,21 @@ final class Woact_Pages
         $safe = $this->safe_prop_key($key);
         if ($safe === '') return '';
         if (!$this->prop_keys) {
-            foreach ((array) ($this->get_manifest()['components'] ?? []) as $component) {
+            $components = [
+                ['type' => 'section', 'defaults' => ['tag' => 'section']],
+                ['type' => 'column', 'defaults' => ['basis' => 6]],
+                ['type' => 'heading', 'defaults' => ['text' => '', 'level' => 'h2']],
+                ['type' => 'text', 'defaults' => ['text' => '']],
+                ['type' => 'button', 'defaults' => ['label' => '', 'url' => '', 'variant' => 'primary']],
+                ['type' => 'image', 'defaults' => ['url' => '', 'alt' => '', 'caption' => '']],
+                ['type' => 'icon', 'defaults' => ['icon' => '']],
+                ['type' => 'list', 'defaults' => ['items' => '']],
+                ['type' => 'quote', 'defaults' => ['text' => '', 'author' => '']],
+                ['type' => 'spacer', 'defaults' => ['height' => 40]],
+                ['type' => 'html', 'defaults' => ['html' => '']],
+            ];
+            if ($this->widgets) $components = array_merge($components, $this->widgets->definitions());
+            foreach ($components as $component) {
                 if (!is_array($component)) continue;
                 $component_type = (string) ($component['type'] ?? '');
                 $known = array_keys((array) ($component['defaults'] ?? []));
