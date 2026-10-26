@@ -9,7 +9,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('WOACT_THEME_VERSION', '1.1.0-rc1');
+define('WOACT_THEME_VERSION', '1.1.1-rc1');
 define('WOACT_THEME_DIR', get_template_directory());
 define('WOACT_THEME_URI', get_template_directory_uri());
 

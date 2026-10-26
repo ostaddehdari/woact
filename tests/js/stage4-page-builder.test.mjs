@@ -28,6 +28,7 @@ test('new layouts use only first-class Flexbox and Grid containers', () => {
   assert.match(editor, /فلکس‌باکس/);
   assert.match(runtime, /gridTemplateColumns/);
   assert.match(runtime, /node\.type === 'flex_container' \|\| node\.type === 'grid_container'/);
+  assert.match(editor, /flexBasis: \(node\.style \|\| \{\}\)\.flexGrow \? 0/);
 });
 
 test('navigator is a searchable collapsible tree and page settings have three tabs', () => {
