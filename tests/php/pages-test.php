@@ -30,6 +30,9 @@ $checks = [
     [count($clean['nodes'][0]['children']) === 1, 'Unknown node removed'],
     [$clean['nodes'][0]['children'][0]['props']['text'] === 'عنوان', 'Text sanitized'],
     [$clean['nodes'][0]['children'][0]['style']['fontSize'] === 150, 'Font size clamp'],
+    [$clean['nodes'][0]['design'] === [], 'Missing design controls stay absent'],
+    [!array_key_exists('widthUnit', $clean['nodes'][0]['design']), 'Missing width control cannot collapse node'],
+    [!array_key_exists('paddingBox', $clean['nodes'][0]['design']), 'Missing padding control cannot override node style'],
 ];
 foreach ($checks as [$passed, $message]) { if (!$passed) { fwrite(STDERR, $message . PHP_EOL); exit(1); } }
 fwrite(STDOUT, "PHP page document tests passed.\n");

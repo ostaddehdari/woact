@@ -414,29 +414,37 @@ final class Woact_Pages
     private function sanitize_design(array $design): array
     {
         $out = [];
-        $out['cssId'] = sanitize_html_class((string) ($design['cssId'] ?? ''));
-        $classes = preg_split('/\s+/', (string) ($design['cssClasses'] ?? ''), -1, PREG_SPLIT_NO_EMPTY) ?: [];
-        $out['cssClasses'] = implode(' ', array_slice(array_filter(array_map('sanitize_html_class', $classes)), 0, 20));
+        if (array_key_exists('cssId', $design)) $out['cssId'] = sanitize_html_class((string) $design['cssId']);
+        if (array_key_exists('cssClasses', $design)) {
+            $classes = preg_split('/\s+/', (string) $design['cssClasses'], -1, PREG_SPLIT_NO_EMPTY) ?: [];
+            $out['cssClasses'] = implode(' ', array_slice(array_filter(array_map('sanitize_html_class', $classes)), 0, 20));
+        }
         foreach (['entranceAnimation', 'hoverAnimation', 'maskShape', 'maskSize', 'maskPosition', 'position', 'globalStyle', 'colorToken', 'backgroundToken', 'typographyToken'] as $key) {
-            $out[$key] = sanitize_key((string) ($design[$key] ?? ''));
+            if (array_key_exists($key, $design)) $out[$key] = sanitize_key((string) $design[$key]);
         }
         foreach (['animationDuration', 'animationDelay', 'zIndex', 'rotate', 'skewX', 'skewY'] as $key) {
-            $out[$key] = max(-9999, min(9999, (int) ($design[$key] ?? 0)));
+            if (array_key_exists($key, $design)) $out[$key] = max(-9999, min(9999, (int) $design[$key]));
         }
-        $out['scale'] = max(0, min(3, (float) ($design['scale'] ?? 1)));
+        if (array_key_exists('scale', $design)) $out['scale'] = max(0, min(3, (float) $design['scale']));
         foreach (['marginBox', 'paddingBox', 'widthUnit', 'minHeightUnit', 'translateX', 'translateY', 'typography', 'backgroundControl', 'borderControl'] as $key) {
-            $out[$key] = $this->sanitize_prop_value($design[$key] ?? [], $key, 0);
+            if (array_key_exists($key, $design) && $design[$key] !== [] && $design[$key] !== null && $design[$key] !== '') {
+                $out[$key] = $this->sanitize_prop_value($design[$key], $key, 0);
+            }
         }
-        $out['attributes'] = [];
-        foreach (array_slice((array) ($design['attributes'] ?? []), 0, 30) as $attribute) {
-            if (!is_array($attribute)) continue;
-            $key = strtolower(sanitize_key((string) ($attribute['key'] ?? '')));
-            if (!preg_match('/^(data|aria)-[a-z0-9_-]+$/', $key) && !in_array($key, ['title', 'role', 'tabindex'], true)) continue;
-            $out['attributes'][] = ['key' => $key, 'value' => sanitize_text_field((string) ($attribute['value'] ?? ''))];
+        if (array_key_exists('attributes', $design)) {
+            $out['attributes'] = [];
+            foreach (array_slice((array) $design['attributes'], 0, 30) as $attribute) {
+                if (!is_array($attribute)) continue;
+                $key = strtolower(sanitize_key((string) ($attribute['key'] ?? '')));
+                if (!preg_match('/^(data|aria)-[a-z0-9_-]+$/', $key) && !in_array($key, ['title', 'role', 'tabindex'], true)) continue;
+                $out['attributes'][] = ['key' => $key, 'value' => sanitize_text_field((string) ($attribute['value'] ?? ''))];
+            }
         }
-        $css = sanitize_textarea_field((string) ($design['customCss'] ?? ''));
-        $css = preg_replace('/@(?:import|charset|namespace)|expression\s*\(|javascript\s*:|<\/?style/i', '', $css) ?: '';
-        $out['customCss'] = substr($css, 0, 10000);
+        if (array_key_exists('customCss', $design)) {
+            $css = sanitize_textarea_field((string) $design['customCss']);
+            $css = preg_replace('/@(?:import|charset|namespace)|expression\s*\(|javascript\s*:|<\/?style/i', '', $css) ?: '';
+            $out['customCss'] = substr($css, 0, 10000);
+        }
         return $out;
     }
 

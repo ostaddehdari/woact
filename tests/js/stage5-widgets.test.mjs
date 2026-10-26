@@ -101,6 +101,12 @@ test('HTML widgets preserve sanitized embedded CSS and SVG after publishing', ()
   assert.match(pagesPhp, /javascript\\s\*:/);
 });
 
+test('saving does not inject empty advanced controls that collapse imported layouts', () => {
+  assert.match(pagesPhp, /array_key_exists\(\$key, \$design\).*\$design\[\$key\] !== \[\]/s);
+  assert.doesNotMatch(pagesPhp, /\$out\[\$key\] = \$this->sanitize_prop_value\(\$design\[\$key\] \?\? \[\]/);
+  assert.match(runtime, /if \(d\.widthUnit\) out\.width = unit\(d\.widthUnit\)/);
+});
+
 test('page saves use the WordPress nonce middleware and cannot overlap', () => {
   assert.doesNotMatch(editor, /apiFetch\.use\(apiFetch\.createNonceMiddleware/);
   assert.match(editor, /saveInFlight = useRef\(null\)/);
