@@ -2,7 +2,7 @@
 Contributors: ostaddehdari
 Requires at least: 6.5
 Requires PHP: 7.4
-Stable tag: 1.0.5-rc1
+Stable tag: 1.0.6-rc1
 License: GPLv2 or later
 
 Companion plugin for Woact. It owns the render policy, the first dashboard settings and the versioned bootstrap data contract.

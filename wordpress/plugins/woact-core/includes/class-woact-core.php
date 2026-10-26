@@ -17,6 +17,7 @@ final class Woact_Core
     private Woact_Pages $pages;
     private Woact_Pages_REST_Controller $pages_controller;
     private Woact_Widget_Registry $widgets;
+    private bool $rendering_page_content = false;
 
     private function __construct()
     {
@@ -71,6 +72,7 @@ final class Woact_Core
         add_action('rest_api_init', [$this, 'register_rest_routes']);
         add_action('wp_enqueue_scripts', [$this, 'apply_frontend_settings'], 20);
         add_action('wp_enqueue_scripts', [$this, 'enqueue_layout_runtime'], 5);
+        add_filter('the_content', [$this, 'render_react_page_content'], 999);
         add_action('wp_body_open', [$this, 'render_classic_banner'], 5);
         add_action('wp_head', [$this, 'print_custom_head_script'], 99);
         add_action('wp_footer', [$this, 'print_custom_footer_script'], 99);
@@ -604,6 +606,29 @@ final class Woact_Core
         ]);
     }
 
+    public function render_react_page_content(string $content): string
+    {
+        if (
+            $this->rendering_page_content
+            || is_admin()
+            || !is_singular(['page', 'post'])
+            || !in_the_loop()
+            || !is_main_query()
+        ) {
+            return $content;
+        }
+        $post_id = (int) get_queried_object_id();
+        $document = $this->pages->get_runtime_document($post_id);
+        if (!$document) return $content;
+        $this->rendering_page_content = true;
+        try {
+            $fallback = $this->render_page_fallback($post_id);
+        } finally {
+            $this->rendering_page_content = false;
+        }
+        return '<div id="woact-page-root-' . $post_id . '" class="woact-page-mount" data-woact-page-root="' . $post_id . '">' . $fallback . '</div>';
+    }
+
     public function render_layout_root(string $type): string
     {
         $payload = $this->layouts->get_runtime_payload($type);
@@ -633,6 +658,25 @@ final class Woact_Core
             wp_enqueue_script('woact-widget-runtime-registry', plugins_url('assets/widget-runtime-registry.js', WOACT_CORE_FILE), ['wp-element'], WOACT_CORE_VERSION, true);
             wp_enqueue_script('woact-page-runtime', plugins_url('assets/page-runtime.js', WOACT_CORE_FILE), ['wp-element', 'woact-widget-runtime-registry'], is_file($page_js) ? (string) filemtime($page_js) : WOACT_CORE_VERSION, true);
             $this->widgets->enqueue_assets($page_document);
+            $mount_js = WOACT_CORE_DIR . 'assets/page-mount.js';
+            wp_enqueue_script('woact-page-mount', plugins_url('assets/page-mount.js', WOACT_CORE_FILE), ['wp-element', 'woact-page-runtime'], is_file($mount_js) ? (string) filemtime($mount_js) : WOACT_CORE_VERSION, true);
+            $post_id = (int) get_queried_object_id();
+            $post = get_post($post_id);
+            wp_add_inline_script('woact-page-mount', 'window.WoactPageMount=' . wp_json_encode([
+                'rootId' => 'woact-page-root-' . $post_id,
+                'document' => $page_document,
+                'data' => [
+                    'site' => ['name' => get_bloginfo('name'), 'description' => get_bloginfo('description'), 'url' => home_url('/')],
+                    'post' => [
+                        'id' => $post_id,
+                        'title' => get_the_title($post_id),
+                        'excerpt' => $post instanceof WP_Post ? wp_strip_all_tags((string) $post->post_excerpt) : '',
+                        'featuredImage' => get_the_post_thumbnail_url($post_id, 'full') ?: '',
+                    ],
+                    'user' => is_user_logged_in() ? ['name' => wp_get_current_user()->display_name] : ['name' => ''],
+                    'widgets' => $this->widgets->runtime_data($page_document, $post_id),
+                ],
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ';', 'before');
         }
         wp_add_inline_script('woact-layout-runtime', 'window.WoactLayoutsBootstrap=' . wp_json_encode([
             'header' => $header,
