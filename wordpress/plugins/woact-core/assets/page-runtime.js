@@ -31,14 +31,18 @@
     var base = node.style || {};
     var override = device === 'desktop' ? {} : ((node.responsive || {})[device] || {});
     var s = Object.assign({}, base, override);
-    var justify = { start: 'flex-start', center: 'center', end: 'flex-end', between: 'space-between' };
+    var justify = { start: 'flex-start', center: 'center', end: 'flex-end', between: 'space-between', around: 'space-around', evenly: 'space-evenly' };
     var align = { start: 'flex-start', center: 'center', end: 'flex-end', stretch: 'stretch' };
     return Object.assign({
-      display: s.display || undefined, flexDirection: s.direction || undefined, gap: s.gap !== undefined ? s.gap + 'px' : undefined,
+      display: s.display || undefined, flexDirection: s.direction || undefined, flexWrap: s.wrap || undefined, flexGrow: s.flexGrow || undefined, gap: s.gap !== undefined ? s.gap + 'px' : undefined,
+      gridTemplateColumns: s.display === 'grid' ? 'repeat(' + Math.max(1, Number(s.gridColumns || 1)) + ',minmax(0,1fr))' : undefined,
+      gridTemplateRows: s.display === 'grid' && s.gridRows ? 'repeat(' + Number(s.gridRows) + ',minmax(0,auto))' : undefined,
+      columnGap: s.columnGap !== undefined ? s.columnGap + 'px' : undefined, rowGap: s.rowGap !== undefined ? s.rowGap + 'px' : undefined,
       padding: s.padding !== undefined ? s.padding + 'px' : undefined, margin: s.margin !== undefined ? s.margin + 'px' : undefined,
       background: s.background || undefined, color: s.color || undefined, width: s.width ? s.width + 'px' : undefined,
       maxWidth: s.maxWidth ? s.maxWidth + 'px' : undefined, minHeight: s.minHeight ? s.minHeight + 'px' : undefined,
       alignItems: align[s.align] || undefined, justifyContent: justify[s.justify] || undefined,
+      justifyItems: align[s.justifyItems] || undefined,
       fontSize: s.fontSize ? s.fontSize + 'px' : undefined, fontWeight: s.fontWeight || undefined,
       borderRadius: s.radius ? s.radius + 'px' : undefined, borderWidth: s.borderWidth ? s.borderWidth + 'px' : undefined,
       borderColor: s.borderColor || undefined, borderStyle: s.borderWidth ? 'solid' : undefined,
@@ -67,6 +71,7 @@
     if (window.WoactWidgetRuntime && window.WoactWidgetRuntime.has(node.type)) {
       return window.WoactWidgetRuntime.render(node.type, { h: h, node: node, props: p, common: common, style: style, data: props.data || {}, widgets: widgets, children: children, device: device });
     }
+    if (node.type === 'flex_container' || node.type === 'grid_container') return h(['div', 'section', 'header', 'footer', 'main', 'article', 'aside', 'nav'].indexOf(p.tag) >= 0 ? p.tag : 'div', common, children);
     if (node.type === 'section') return h(['section', 'header', 'footer', 'main', 'article', 'aside'].indexOf(p.tag) >= 0 ? p.tag : 'section', common, children);
     if (node.type === 'container' || node.type === 'columns') return h('div', common, children);
     if (node.type === 'column') return h('div', Object.assign({}, common, { style: Object.assign({}, style, { flexBasis: ((p.basis || 6) / 12 * 100) + '%' }) }), children);
@@ -144,7 +149,7 @@
     var globals = settings.designSystem || {}, css = customCss(document.nodes || []), variables = { '--woact-page-width': (settings.contentWidth || 1180) + 'px', background: settings.background || '#fff' };
     (globals.colors || []).forEach(function (item) { variables['--woact-color-' + item.id] = item.value; }); (globals.spacing || []).forEach(function (item) { variables['--woact-space-' + item.id] = Number(item.value || 0) + 'px'; }); (globals.radii || []).forEach(function (item) { variables['--woact-radius-' + item.id] = Number(item.value || 0) + 'px'; });
     var runtimeData = Object.assign({}, props.data || {}, { designSystem: globals });
-    var globalCss = String(globals.customCss || '');
+    var globalCss = String(globals.customCss || '') + '\n' + String(settings.customCss || '');
     return h('div', { className: 'woact-page-runtime ' + (settings.className || ''), style: variables, 'data-device': props.device || 'desktop' }, (css || globalCss) ? h('style', { dangerouslySetInnerHTML: { __html: globalCss + '\n' + css } }) : null,
       (document.nodes || []).map(function (node) { return h(Node, { key: node.id, node: node, device: props.device || 'desktop', data: runtimeData }); })
     );

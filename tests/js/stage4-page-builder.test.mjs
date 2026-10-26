@@ -21,6 +21,23 @@ test('page runtime supports nested nodes and responsive styles', () => {
   assert.match(runtime, /window\.WoactPageRenderer/);
 });
 
+test('new layouts use only first-class Flexbox and Grid containers', () => {
+  assert.match(editor, /function StructurePicker/);
+  assert.match(editor, /containers: \['flex_container', 'grid_container'\]/);
+  assert.match(editor, /gridColumns/);
+  assert.match(editor, /فلکس‌باکس/);
+  assert.match(runtime, /gridTemplateColumns/);
+  assert.match(runtime, /node\.type === 'flex_container' \|\| node\.type === 'grid_container'/);
+});
+
+test('navigator is a searchable collapsible tree and page settings have three tabs', () => {
+  assert.match(editor, /جست‌وجوی ساختار/);
+  assert.match(editor, /setCollapsed/);
+  assert.match(editor, /\['content', 'تنظیمات'\], \['style', 'استایل'\], \['advanced', 'پیشرفته'\]/);
+  assert.match(editor, /چیدمان صفحه/);
+  assert.match(editor, /CSS سفارشی صفحه/);
+});
+
 test('theme renders published page documents', () => {
   assert.match(app, /data\.pageDocument/);
   assert.match(app, /WoactPageRenderer/);

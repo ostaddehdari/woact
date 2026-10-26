@@ -13,8 +13,8 @@ final class Woact_Pages
     public const META_PUBLISHED = '_woact_page_published';
     public const META_REVISIONS = '_woact_page_revisions';
     public const META_ENABLED = '_woact_page_enabled';
-    private const NODE_TYPES = ['section', 'container', 'columns', 'column', 'heading', 'text', 'button', 'image', 'icon', 'list', 'quote', 'divider', 'spacer', 'html'];
-    private const CONTAINERS = ['section', 'container', 'columns', 'column'];
+    private const NODE_TYPES = ['flex_container', 'grid_container', 'section', 'container', 'columns', 'column', 'heading', 'text', 'button', 'image', 'icon', 'list', 'quote', 'divider', 'spacer', 'html'];
+    private const CONTAINERS = ['flex_container', 'grid_container', 'section', 'container', 'columns', 'column'];
     private ?Woact_Widget_Registry $widgets;
     private array $prop_keys = [];
 
@@ -34,10 +34,12 @@ final class Woact_Pages
                 ['id' => 'media', 'label' => 'رسانه'],
             ],
             'components' => [
-                ['type' => 'section', 'label' => 'بخش', 'icon' => 'align-wide', 'category' => 'layout', 'container' => true, 'defaults' => ['tag' => 'section'], 'fields' => [$field('tag', 'تگ HTML', 'select', 'section', ['options' => ['section', 'header', 'footer', 'main', 'article', 'aside']])]],
-                ['type' => 'container', 'label' => 'کانتینر', 'icon' => 'editor-table', 'category' => 'layout', 'container' => true, 'defaults' => [], 'fields' => []],
-                ['type' => 'columns', 'label' => 'ستون‌ها', 'icon' => 'columns', 'category' => 'layout', 'container' => true, 'defaults' => [], 'fields' => []],
-                ['type' => 'column', 'label' => 'ستون', 'icon' => 'excerpt-view', 'category' => 'layout', 'container' => true, 'defaults' => ['basis' => 6], 'fields' => [$field('basis', 'عرض از ۱۲', 'slider', 6, ['min' => 1, 'max' => 12])]],
+                ['type' => 'flex_container', 'label' => 'فلکس‌باکس', 'icon' => 'align-pull-right', 'category' => 'layout', 'container' => true, 'defaults' => ['tag' => 'div'], 'fields' => [$field('tag', 'تگ HTML', 'select', 'div', ['options' => ['div', 'section', 'header', 'footer', 'main', 'article', 'aside', 'nav']])]],
+                ['type' => 'grid_container', 'label' => 'شبکه‌ای', 'icon' => 'grid-view', 'category' => 'layout', 'container' => true, 'defaults' => ['tag' => 'div'], 'fields' => [$field('tag', 'تگ HTML', 'select', 'div', ['options' => ['div', 'section', 'header', 'footer', 'main', 'article', 'aside', 'nav']])]],
+                ['type' => 'section', 'label' => 'بخش قدیمی', 'icon' => 'align-wide', 'category' => 'legacy', 'hidden' => true, 'container' => true, 'defaults' => ['tag' => 'section'], 'fields' => [$field('tag', 'تگ HTML', 'select', 'section', ['options' => ['section', 'header', 'footer', 'main', 'article', 'aside']])]],
+                ['type' => 'container', 'label' => 'کانتینر قدیمی', 'icon' => 'editor-table', 'category' => 'legacy', 'hidden' => true, 'container' => true, 'defaults' => [], 'fields' => []],
+                ['type' => 'columns', 'label' => 'ستون‌های قدیمی', 'icon' => 'columns', 'category' => 'legacy', 'hidden' => true, 'container' => true, 'defaults' => [], 'fields' => []],
+                ['type' => 'column', 'label' => 'ستون قدیمی', 'icon' => 'excerpt-view', 'category' => 'legacy', 'hidden' => true, 'container' => true, 'defaults' => ['basis' => 6], 'fields' => [$field('basis', 'عرض از ۱۲', 'slider', 6, ['min' => 1, 'max' => 12])]],
                 ['type' => 'heading', 'label' => 'عنوان', 'icon' => 'heading', 'category' => 'basic', 'defaults' => ['text' => 'عنوان جدید', 'level' => 'h2'], 'fields' => [$field('text', 'متن', 'textarea'), $field('level', 'سطح عنوان', 'button_group', 'h2', ['options' => ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']])]],
                 ['type' => 'text', 'label' => 'متن', 'icon' => 'editor-paragraph', 'category' => 'basic', 'defaults' => ['text' => 'متن خود را اینجا بنویسید.'], 'fields' => [$field('text', 'متن', 'textarea')]],
                 ['type' => 'button', 'label' => 'دکمه', 'icon' => 'button', 'category' => 'basic', 'defaults' => ['label' => 'بیشتر بدانید', 'url' => '#', 'variant' => 'primary'], 'fields' => [$field('label', 'عنوان'), $field('url', 'پیوند', 'url'), $field('variant', 'نوع', 'button_group', 'primary', ['options' => [['value' => 'primary', 'label' => 'اصلی'], ['value' => 'outline', 'label' => 'خطی']]])]],
@@ -141,7 +143,10 @@ final class Woact_Pages
         update_post_meta($post_id, self::META_DRAFT, $document);
         update_post_meta($post_id, self::META_ENABLED, !empty($input['enabled']) ? '1' : '0');
         if (isset($input['title'])) {
-            wp_update_post(['ID' => $post_id, 'post_title' => sanitize_text_field((string) $input['title'])]);
+            $update = ['ID' => $post_id, 'post_title' => sanitize_text_field((string) $input['title'])];
+            $post_type = get_post_type_object((string) $current['postType']);
+            if (isset($input['status']) && in_array($input['status'], ['draft', 'publish', 'private'], true) && $post_type && current_user_can($post_type->cap->publish_posts)) $update['post_status'] = $input['status'];
+            wp_update_post($update);
         }
         clean_post_cache($post_id);
         $saved = $this->get($post_id);
@@ -207,7 +212,7 @@ final class Woact_Pages
     public function render_fallback(array $document, array $data = []): string
     {
         $globals = (array) ($document['settings']['designSystem'] ?? []);
-        $custom_css = (string) ($globals['customCss'] ?? '') . "\n" . $this->collect_custom_css((array) ($document['nodes'] ?? []));
+        $custom_css = (string) ($globals['customCss'] ?? '') . "\n" . (string) ($document['settings']['customCss'] ?? '') . "\n" . $this->collect_custom_css((array) ($document['nodes'] ?? []));
         $html = $custom_css !== '' ? '<style>' . $custom_css . '</style>' : '';
         $variables = ''; foreach ((array) ($globals['colors'] ?? []) as $item) $variables .= '--woact-color-' . sanitize_key((string) ($item['id'] ?? '')) . ':' . esc_attr((string) ($item['value'] ?? '')) . ';';
         $html .= '<div class="woact-page-runtime" style="--woact-page-width:' . (int) ($document['settings']['contentWidth'] ?? 1180) . 'px;background:' . esc_attr((string) ($document['settings']['background'] ?? '#ffffff')) . ';' . $variables . '">';
@@ -236,6 +241,13 @@ final class Woact_Pages
         }
         if (!empty($style['fontWeight'])) $css .= 'font-weight:' . (int) $style['fontWeight'] . ';';
         if (!empty($style['direction'])) $css .= 'flex-direction:' . esc_attr((string) $style['direction']) . ';';
+        if (!empty($style['wrap'])) $css .= 'flex-wrap:' . esc_attr((string) $style['wrap']) . ';';
+        if (!empty($style['flexGrow'])) $css .= 'flex-grow:' . (int) $style['flexGrow'] . ';';
+        if (($style['display'] ?? '') === 'grid') {
+            $css .= 'grid-template-columns:repeat(' . max(1, (int) ($style['gridColumns'] ?? 1)) . ',minmax(0,1fr));';
+            if (!empty($style['gridRows'])) $css .= 'grid-template-rows:repeat(' . (int) $style['gridRows'] . ',minmax(0,auto));';
+            $css .= 'column-gap:' . (int) ($style['columnGap'] ?? $style['gap'] ?? 0) . 'px;row-gap:' . (int) ($style['rowGap'] ?? $style['gap'] ?? 0) . 'px;';
+        }
         if (!empty($style['borderWidth'])) $css .= 'border-style:solid;';
         $design = (array) ($node['design'] ?? []);
         $globals = (array) ($data['designSystem'] ?? []);
@@ -252,7 +264,7 @@ final class Woact_Pages
         $common = $html_id . ' class="' . $class . '" data-woact-node="' . esc_attr((string) ($node['id'] ?? '')) . '" style="' . $css . '"' . $attributes;
         $dynamic = $this->dynamic_value((string) ($node['dynamic'] ?? ''), $data);
         if (in_array($type, self::CONTAINERS, true)) {
-            $tag = $type === 'section' && in_array(($props['tag'] ?? ''), ['section', 'header', 'footer', 'main', 'article', 'aside'], true) ? $props['tag'] : 'div';
+            $tag = in_array($type, ['section', 'flex_container', 'grid_container'], true) && in_array(($props['tag'] ?? ''), ['div', 'section', 'header', 'footer', 'main', 'article', 'aside', 'nav'], true) ? $props['tag'] : 'div';
             $inner = '';
             foreach ((array) ($node['children'] ?? []) as $child) $inner .= $this->render_node((array) $child, $data);
             return '<' . $tag . $common . '>' . $inner . '</' . $tag . '>';
@@ -333,6 +345,8 @@ final class Woact_Pages
                 'background' => $this->color((string) ($settings['background'] ?? '#ffffff'), '#ffffff'),
                 'className' => sanitize_html_class((string) ($settings['className'] ?? '')),
                 'hideTitle' => !empty($settings['hideTitle']),
+                'pageLayout' => in_array(($settings['pageLayout'] ?? ''), ['default', 'full_width', 'canvas'], true) ? $settings['pageLayout'] : 'default',
+                'customCss' => wp_strip_all_tags((string) ($settings['customCss'] ?? '')),
                 'designSystem' => $this->sanitize_design_system((array) ($settings['designSystem'] ?? [])),
             ],
             'nodes' => $nodes ?: $this->blank_document()['nodes'],
@@ -389,13 +403,13 @@ final class Woact_Pages
     {
         $defaults = $partial ? [] : ['display' => 'flex', 'direction' => 'column', 'gap' => 16, 'padding' => 0, 'margin' => 0, 'background' => '', 'color' => '', 'width' => 0, 'maxWidth' => 0, 'minHeight' => 0, 'align' => 'stretch', 'justify' => 'start', 'fontSize' => 0, 'fontWeight' => 0, 'radius' => 0, 'borderWidth' => 0, 'borderColor' => '', 'shadow' => '', 'zIndex' => 0];
         $out = $defaults;
-        $enums = ['display' => ['flex', 'grid', 'block'], 'direction' => ['row', 'column'], 'align' => ['start', 'center', 'end', 'stretch'], 'justify' => ['start', 'center', 'end', 'between']];
+        $enums = ['display' => ['flex', 'grid', 'block'], 'direction' => ['row', 'row-reverse', 'column', 'column-reverse'], 'wrap' => ['nowrap', 'wrap', 'wrap-reverse'], 'align' => ['start', 'center', 'end', 'stretch'], 'justify' => ['start', 'center', 'end', 'between', 'around', 'evenly'], 'justifyItems' => ['start', 'center', 'end', 'stretch'], 'alignItems' => ['start', 'center', 'end', 'stretch']];
         foreach ($enums as $key => $allowed) {
             if (array_key_exists($key, $style) && in_array($style[$key], $allowed, true)) {
                 $out[$key] = $style[$key];
             }
         }
-        foreach (['gap' => 100, 'padding' => 200, 'margin' => 200, 'width' => 1920, 'maxWidth' => 1920, 'minHeight' => 1200, 'fontSize' => 150, 'fontWeight' => 900, 'radius' => 200, 'borderWidth' => 20, 'zIndex' => 9999] as $key => $max) {
+        foreach (['gap' => 100, 'columnGap' => 100, 'rowGap' => 100, 'gridColumns' => 12, 'gridRows' => 12, 'flexGrow' => 12, 'padding' => 200, 'margin' => 200, 'width' => 1920, 'maxWidth' => 1920, 'minHeight' => 1200, 'fontSize' => 150, 'fontWeight' => 900, 'radius' => 200, 'borderWidth' => 20, 'zIndex' => 9999] as $key => $max) {
             if (array_key_exists($key, $style)) {
                 $out[$key] = max($key === 'margin' || $key === 'zIndex' ? -$max : 0, min($max, (int) $style[$key]));
             }
@@ -580,9 +594,9 @@ final class Woact_Pages
     {
         return [
             'schemaVersion' => self::SCHEMA_VERSION,
-            'settings' => ['contentWidth' => 1180, 'background' => '#ffffff', 'className' => '', 'hideTitle' => true, 'designSystem' => $this->default_design_system()],
+            'settings' => ['contentWidth' => 1180, 'background' => '#ffffff', 'className' => '', 'hideTitle' => true, 'pageLayout' => 'default', 'customCss' => '', 'designSystem' => $this->default_design_system()],
             'nodes' => [[
-                'id' => $this->new_id('section'), 'type' => 'section', 'props' => ['tag' => 'section'],
+                'id' => $this->new_id('flex_container'), 'type' => 'flex_container', 'props' => ['tag' => 'section'],
                 'style' => ['display' => 'flex', 'direction' => 'column', 'gap' => 16, 'padding' => 48, 'margin' => 0, 'background' => '#ffffff', 'color' => '#17202a', 'width' => 0, 'maxWidth' => 1180, 'minHeight' => 260, 'align' => 'center', 'justify' => 'center', 'fontSize' => 0, 'fontWeight' => 0, 'radius' => 0, 'borderWidth' => 0, 'borderColor' => '', 'shadow' => '', 'zIndex' => 0],
                 'responsive' => ['tablet' => [], 'mobile' => ['padding' => 24]],
                 'visibility' => ['desktop' => true, 'tablet' => true, 'mobile' => true], 'dynamic' => '', 'locked' => false,
