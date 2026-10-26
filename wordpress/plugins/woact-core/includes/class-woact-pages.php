@@ -261,7 +261,7 @@ final class Woact_Pages
         if ($type === 'text') return '<p' . $common . '>' . esc_html((string) ($dynamic ?? $props['text'] ?? '')) . '</p>';
         if ($type === 'button') return '<a' . str_replace('class="' . $class . '"', 'class="' . $class . ' is-' . esc_attr((string) ($props['variant'] ?? 'primary')) . '"', $common) . ' href="' . esc_url((string) ($props['url'] ?? '#')) . '">' . esc_html((string) ($props['label'] ?? '')) . '</a>';
         if ($type === 'image') { $src = (string) ($dynamic ?? $props['url'] ?? ''); return '<figure' . $common . '>' . ($src ? '<img src="' . esc_url($src) . '" alt="' . esc_attr((string) ($props['alt'] ?? '')) . '">' : '') . '</figure>'; }
-        if ($type === 'html') return '<div' . $common . '>' . wp_kses_post((string) ($props['html'] ?? '')) . '</div>';
+        if ($type === 'html') return '<div' . $common . '>' . $this->sanitize_html_widget((string) ($props['html'] ?? '')) . '</div>';
         if ($type === 'divider') return '<hr' . $common . '>';
         if ($type === 'spacer') return '<div' . str_replace('style="' . $css . '"', 'style="' . $css . 'height:' . (int) ($props['height'] ?? 40) . 'px"', $common) . '></div>';
         $text = (string) ($props['icon'] ?? $props['text'] ?? '');
@@ -350,7 +350,7 @@ final class Woact_Pages
             $key = $this->canonical_prop_key($type, (string) $key);
             if ($key === '') continue;
             if ($key === 'html' && $type === 'html') {
-                $props[$key] = wp_kses_post((string) $value);
+                $props[$key] = $this->sanitize_html_widget((string) $value);
             } else {
                 $props[$key] = $this->sanitize_prop_value($value, $key, 0);
             }
@@ -498,6 +498,36 @@ final class Woact_Pages
             return esc_url_raw((string) $value);
         }
         return sanitize_textarea_field((string) $value);
+    }
+
+    private function sanitize_html_widget(string $html): string
+    {
+        $styles = [];
+        $html = preg_replace_callback('/<style\b[^>]*>(.*?)<\/style>/is', function (array $match) use (&$styles): string {
+            $styles[] = $this->sanitize_widget_css((string) ($match[1] ?? ''));
+            return '';
+        }, $html) ?? '';
+        $allowed = wp_kses_allowed_html('post');
+        $allowed['svg'] = ['class' => true, 'xmlns' => true, 'viewbox' => true, 'viewBox' => true, 'width' => true, 'height' => true, 'fill' => true, 'stroke' => true, 'role' => true, 'aria-hidden' => true, 'focusable' => true];
+        $allowed['g'] = ['fill' => true, 'stroke' => true, 'transform' => true, 'opacity' => true, 'class' => true];
+        $allowed['path'] = ['d' => true, 'fill' => true, 'stroke' => true, 'stroke-width' => true, 'stroke-linecap' => true, 'stroke-linejoin' => true, 'transform' => true, 'opacity' => true, 'class' => true];
+        $allowed['circle'] = ['cx' => true, 'cy' => true, 'r' => true, 'fill' => true, 'stroke' => true, 'stroke-width' => true, 'class' => true];
+        $allowed['rect'] = ['x' => true, 'y' => true, 'width' => true, 'height' => true, 'rx' => true, 'ry' => true, 'fill' => true, 'stroke' => true, 'class' => true];
+        foreach (['line', 'polyline', 'polygon'] as $tag) $allowed[$tag] = ['x1' => true, 'x2' => true, 'y1' => true, 'y2' => true, 'points' => true, 'fill' => true, 'stroke' => true, 'stroke-width' => true, 'class' => true];
+        $clean_html = wp_kses($html, $allowed);
+        $clean_css = implode("\n", array_filter($styles));
+        return ($clean_css !== '' ? '<style>' . $clean_css . '</style>' : '') . $clean_html;
+    }
+
+    private function sanitize_widget_css(string $css): string
+    {
+        $css = sanitize_textarea_field($css);
+        $css = preg_replace('/@(?:import|charset|namespace)|expression\s*\(|javascript\s*:|vbscript\s*:|behavior\s*:|-moz-binding\s*:|<\/?style/i', '', $css) ?: '';
+        $css = preg_replace_callback('/url\(\s*(["\']?)(.*?)\1\s*\)/i', static function (array $match): string {
+            $url = esc_url_raw(trim((string) ($match[2] ?? '')), ['http', 'https']);
+            return $url !== '' ? 'url("' . str_replace(['"', "'", '(', ')'], '', $url) . '")' : 'none';
+        }, $css) ?? '';
+        return substr($css, 0, 100000);
     }
 
     private function canonical_prop_key(string $type, string $key): string

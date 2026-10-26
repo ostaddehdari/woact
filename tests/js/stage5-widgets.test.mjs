@@ -93,6 +93,14 @@ test('saving preserves camelCase widget props and repairs old lowercase props', 
   assert.match(pagesPhp, /private function safe_prop_key/);
 });
 
+test('HTML widgets preserve sanitized embedded CSS and SVG after publishing', () => {
+  assert.match(pagesPhp, /sanitize_html_widget\(\(string\) \$value\)/);
+  assert.match(pagesPhp, /preg_replace_callback\('\/<style/);
+  assert.match(pagesPhp, /\$allowed\['svg'\]/);
+  assert.match(pagesPhp, /sanitize_widget_css/);
+  assert.match(pagesPhp, /javascript\\s\*:/);
+});
+
 test('page saves use the WordPress nonce middleware and cannot overlap', () => {
   assert.doesNotMatch(editor, /apiFetch\.use\(apiFetch\.createNonceMiddleware/);
   assert.match(editor, /saveInFlight = useRef\(null\)/);
