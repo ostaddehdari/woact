@@ -10,6 +10,7 @@ function sanitize_html_class(string $value): string { return preg_replace('/[^a-
 function sanitize_hex_color(string $value) { return preg_match('/^#[0-9a-fA-F]{6}$/', $value) ? strtolower($value) : null; }
 function esc_url_raw(string $value): string { return filter_var($value, FILTER_VALIDATE_URL) ? $value : ''; }
 function wp_kses_post(string $value): string { return strip_tags($value, '<strong><em><a>'); }
+function wp_strip_all_tags(string $value): string { return strip_tags($value); }
 function wp_generate_uuid4(): string { static $i = 0; return sprintf('00000000-0000-4000-8000-%012d', ++$i); }
 
 require_once dirname(__DIR__, 2) . '/wordpress/plugins/woact-core/includes/class-woact-pages.php';
