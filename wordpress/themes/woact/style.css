@@ -133,3 +133,22 @@ button, input, select, textarea { font: inherit; }
   .woact-icon-button, .woact-mobile-menu > summary { inline-size: 40px; block-size: 40px; min-width: 40px; padding: 7px; }
   .woact-brand img { max-width: 112px; }
 }
+
+/* Expandable search widget in the fallback header. */
+.woact-header-search { position: relative; }
+.woact-header-search > summary { list-style: none; }
+.woact-header-search > summary::-webkit-details-marker { display: none; }
+.woact-search-panel {
+  position: absolute; z-index: 110; top: calc(100% + 10px); inset-inline-end: 0;
+  width: min(340px, calc(100vw - 32px)); padding: 14px; background: #fff;
+  border: 1px solid var(--woact-border); border-radius: 12px;
+  box-shadow: 0 12px 24px #0f172a1a;
+}
+.woact-search-panel form { display: flex; gap: 6px; }
+.woact-search-panel input[type="search"] {
+  flex: 1; min-width: 0; width: 100%; border: 1px solid var(--woact-border);
+  border-radius: 8px; padding: 8px 10px; font-size: 14px;
+}
+.woact-search-panel button, .woact-search-panel input[type="submit"] {
+  border: 0; border-radius: 8px; padding: 8px 12px; background: var(--woact-primary); color: #fff;
+}
