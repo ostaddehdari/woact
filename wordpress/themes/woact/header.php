@@ -43,9 +43,12 @@ $woact_logged_in = is_user_logged_in();
                     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.5 3-7 8-7s8 2.5 8 7"/></svg>
                 </a>
             <?php else : ?>
-                <a class="woact-icon-button" href="<?php echo esc_url(home_url('/?s=')); ?>" aria-label="<?php esc_attr_e('جست‌وجو', 'woact'); ?>" title="<?php esc_attr_e('جست‌وجو', 'woact'); ?>">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.7" cy="10.7" r="6.7"/><path d="m16 16 5 5"/></svg>
-                </a>
+                <details class="woact-header-search">
+                    <summary class="woact-icon-button" aria-label="<?php esc_attr_e('باز کردن جست‌وجو', 'woact'); ?>" title="<?php esc_attr_e('جست‌وجو', 'woact'); ?>">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.7" cy="10.7" r="6.7"/><path d="m16 16 5 5"/></svg>
+                    </summary>
+                    <div class="woact-search-panel"><?php get_search_form(); ?></div>
+                </details>
                 <?php if ($woact_cart_url) : ?>
                     <a class="woact-icon-button" href="<?php echo esc_url($woact_cart_url); ?>" aria-label="<?php esc_attr_e('سبد خرید', 'woact'); ?>" title="<?php esc_attr_e('سبد خرید', 'woact'); ?>">
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.2 11h11.6L21 7H6"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>
