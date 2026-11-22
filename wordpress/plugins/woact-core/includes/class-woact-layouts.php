@@ -701,7 +701,7 @@ final class Woact_Layouts
 
     private function sanitize_shape(array $shape): array
     {
-        $type = in_array(($shape['type'] ?? 'none'), self::SHAPE_TYPES, true) ? (string) $shape['type'] : 'none';
+        $type = in_array(($shape['type'] ?? 'none'), self::SHAPE_TYPES, true) ? (string) ($shape['type'] ?? 'none') : 'none';
         return [
             'type' => $type,
             'color' => $this->color((string) ($shape['color'] ?? '#ffffff'), '#ffffff'),

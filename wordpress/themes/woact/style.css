@@ -79,3 +79,76 @@ button, input, select, textarea { font: inherit; }
   .woact-main { padding-block: 24px; }
 }
 
+
+
+/* Meshkat fallback header: single row, accessible mobile menu, unclipped icons. */
+.woact-site-header { position: relative; z-index: 100; }
+.woact-header-inner { flex-wrap: nowrap; gap: clamp(10px, 2vw, 24px); }
+.woact-header-inner > * { min-width: 0; }
+.woact-brand { flex: 0 0 auto; }
+.woact-brand a { display: inline-flex; align-items: center; }
+.woact-brand img { max-width: min(220px, 100%); object-fit: contain; }
+.woact-desktop-nav { flex: 1 1 auto; min-width: 0; }
+.woact-desktop-nav ul { justify-content: center; gap: clamp(8px, 1.4vw, 20px); }
+.woact-header-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.woact-icon-button, .woact-mobile-menu > summary {
+  display: inline-flex; align-items: center; justify-content: center;
+  inline-size: 44px; block-size: 44px; min-width: 44px;
+  border: 1px solid var(--woact-border); border-radius: 12px;
+  background: #fff; color: var(--woact-text); text-decoration: none;
+  cursor: pointer; padding: 8px; line-height: 1;
+}
+.woact-icon-button svg { display: block; inline-size: 22px; block-size: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; overflow: visible; }
+.woact-icon-button:focus-visible, .woact-mobile-menu > summary:focus-visible,
+.woact-header-search > summary:focus-visible { outline: 2px solid var(--woact-primary); outline-offset: 2px; }
+.woact-account-link { white-space: nowrap; font-size: .9rem; }
+.woact-mobile-menu { display: none; }
+.woact-burger { display: grid; gap: 5px; }
+.woact-burger span { inline-size: 20px; block-size: 2px; background: currentColor; border-radius: 2px; }
+.woact-announcement { display: none !important; }
+@media (max-width: 900px) {
+  .woact-site-header .woact-header-inner {
+    flex-direction: row; align-items: center; justify-content: space-between;
+    flex-wrap: nowrap; padding-block: 10px; min-height: 64px; gap: 8px;
+  }
+  .woact-desktop-nav, .woact-account-link { display: none; }
+  .woact-brand { flex: 1 1 auto; min-width: 0; }
+  .woact-brand img { max-height: 40px; max-width: min(150px, 100%); }
+  .woact-header-actions { gap: 5px; }
+  .woact-mobile-menu { display: block; flex: 0 0 auto; }
+  .woact-mobile-menu > summary { list-style: none; }
+  .woact-mobile-menu > summary::-webkit-details-marker { display: none; }
+  .woact-mobile-menu > nav {
+    position: absolute; inset-inline: 16px; top: calc(100% - 1px);
+    display: flex; flex-direction: column; gap: 4px; max-height: min(72vh, 520px);
+    padding: 16px; overflow: auto; overscroll-behavior: contain; background: #fff;
+    border: 1px solid var(--woact-border); border-radius: 0 0 16px 16px;
+    box-shadow: 0 16px 28px #0f172a1a;
+  }
+  .woact-mobile-menu nav ul { display: flex; flex-direction: column; align-items: stretch; list-style: none; margin: 0; padding: 0; gap: 0; }
+  .woact-mobile-menu nav a { display: block; padding: 10px 12px; color: var(--woact-text); text-decoration: none; border-radius: 8px; }
+  .woact-mobile-menu nav a:hover { background: var(--woact-background); }
+}
+@media (max-width: 360px) {
+  .woact-icon-button, .woact-mobile-menu > summary { inline-size: 40px; block-size: 40px; min-width: 40px; padding: 7px; }
+  .woact-brand img { max-width: 112px; }
+}
+
+/* Expandable search widget in the fallback header. */
+.woact-header-search { position: relative; }
+.woact-header-search > summary { list-style: none; }
+.woact-header-search > summary::-webkit-details-marker { display: none; }
+.woact-search-panel {
+  position: absolute; z-index: 110; top: calc(100% + 10px); inset-inline-end: 0;
+  width: min(340px, calc(100vw - 32px)); padding: 14px; background: #fff;
+  border: 1px solid var(--woact-border); border-radius: 12px;
+  box-shadow: 0 12px 24px #0f172a1a;
+}
+.woact-search-panel form { display: flex; gap: 6px; }
+.woact-search-panel input[type="search"] {
+  flex: 1; min-width: 0; width: 100%; border: 1px solid var(--woact-border);
+  border-radius: 8px; padding: 8px 10px; font-size: 14px;
+}
+.woact-search-panel button, .woact-search-panel input[type="submit"] {
+  border: 0; border-radius: 8px; padding: 8px 12px; background: var(--woact-primary); color: #fff;
+}

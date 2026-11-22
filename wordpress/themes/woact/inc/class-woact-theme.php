@@ -30,6 +30,14 @@ final class Woact_Theme
         add_filter('template_include', [$this, 'select_template'], 100);
         add_filter('body_class', [$this, 'body_classes']);
         add_action('admin_notices', [$this, 'core_plugin_notice']);
+        add_filter('woocommerce_account_menu_items', [$this, 'filter_account_menu_items'], 99);
+    }
+
+    /** Remove only the downloads navigation item; never delete customer files or permissions. */
+    public function filter_account_menu_items(array $items): array
+    {
+        unset($items['downloads']);
+        return $items;
     }
 
     public function setup(): void
